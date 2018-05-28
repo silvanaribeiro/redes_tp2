@@ -11,7 +11,8 @@ def main(argv):
 	ADDR = None
 	PERIOD = None
 	STARTUP = None
-	# Temos que pensar melhor nisso aqui. Cada roteador tem um routing table.
+	PORT = 55151
+	
 	routing_table = {}
 	try:
 		opts,args=getopt.getopt(argv,'a:u:s:',[ 'addr=', 'update-period=', 'startup-commands=' ])
@@ -31,8 +32,8 @@ def main(argv):
 		read_file(STARTUP, routing_table)
 
 	print(ADDR, PERIOD, STARTUP)
-
-	while True:
+	comando = None
+	while comando is not 'quit':
 		comando = input('')
 		comando = comando.replace('\n', '')
 		comando = comando.split(" ")
@@ -48,6 +49,7 @@ def main(argv):
 
 def send_trace(ip):
 	print (ip)
+
 # receives string 'add' or 'del'. Pelo que eu entendi a gente só vai usar isso pra inicializar os roteadores mesmo. Talvez nem precisasse estar no programa.
 def loopback(operation):
 	 subprocess.call(['./tests/lo-adresses.sh',operation])
@@ -89,6 +91,19 @@ def decode_message(message):
 	return data
 
 
+def send_message(HOST, PORT, message):
+	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	dest = (HOST, int(PORT))
+	udp.sendto(message, dest)
+	udp.close()
+	
+def start_listening(PORT):
+	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	orig = ('', int(PORT))
+	udp.bind(orig)
+	while True:
+		message, client = udp.recvfrom(1024)
+	udp.close()
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
