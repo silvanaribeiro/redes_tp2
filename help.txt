@@ -1,0 +1,27 @@
+
+TAREFAS
+
+- Comando inicial tela P--> OK
+- leitura arquivo startup S --> OK
+- Cod decod JSON S --> OK
+- atualizacao rotas P
+- trace p
+- dado P
+- tabela de cargas
+- roteamento
+- remocao de rota desatualizada
+- imprimir payloads
+- restringir parametros de entrada: apenas startup n é obrigatorio
+
+----------------------------------------------------------------------
+INTERPRETAÇÃO DA ESPECIFICACAO:
+
+Exemplo de chamada do programa:
+
+python router.py --addr 127.0.1.1 --update-period pi(?) --startup-commands startup.txt
+
+Comandos do teclado:
+
+add <ip> <peso>
+del <ip>
+trace <ip>
