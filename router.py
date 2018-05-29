@@ -5,6 +5,9 @@ import subprocess
 import json
 from pprint import pprint
 from collections import namedtuple
+import threading
+from threading import Timer
+import time
 
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost')
 count_route_rows = 0
@@ -41,6 +44,13 @@ def main(argv):
 	comando = None
 
 	start_listening(ADDR, 55151)
+	
+	t=threading.Thread(target=listen_to_cdm, args=())
+	t.start()
+	
+	update_routes()
+	
+def listen_to_cdm():
 	while comando is not 'quit':
 		comando = input('')
 		print (comando)
@@ -118,9 +128,21 @@ def start_listening(IP, PORT):
 	orig = (IP, int(PORT))
 	udp.bind(orig)
 	while True:
-		message, client = udp.recvfrom(1024)
-		print ("MENSAGEM RECEBIDA")
+		t=threading.Thread(target=handler, args=(udp))
+		t.start() # iniciando nova thread que recebe dados do cliente
 	udp.close()
+	
+def handler(udp):
+	message, client = udp.recvfrom(1024)
+	print ("MENSAGEM RECEBIDA")
+	udp.close()
+	
+def update_routes():
+    threading.Timer(PERIOD, update_routes).start()
+    for route in routes:
+        if time.time() > route.ttl + 4*PERIOD :
+            routes.remove(route)
+    
 
 if __name__ == "__main__":
 	main(sys.argv[1:])

@@ -10,11 +10,12 @@ TAREFAS
 - trace p
 - dado P
 - tabela de cargas
-- roteamento
-- remocao de rota desatualizada
+- roteamento P
+- remocao de rota desatualizada S
 - imprimir payloads S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
+- Corrigir Add P
 
 ----------------------------------------------------------------------
 INTERPRETAÇÃO DA ESPECIFICACAO:
