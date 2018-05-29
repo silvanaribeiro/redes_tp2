@@ -23,7 +23,7 @@ def main(argv):
 
 	# teste = RouteRow('A','C',2)
 	# print (teste)
-	routing_table = {}
+	routing_table = list()
 	try:
 		opts,args=getopt.getopt(argv,'a:u:s:',[ 'addr=', 'update-period=', 'startup-commands=' ])
 	except getopt.GetoptError:
@@ -42,16 +42,16 @@ def main(argv):
 		read_file(STARTUP, routing_table)
 
 	print(ADDR, PERIOD, STARTUP)
-	comando = None
 
 	start_listening(ADDR, 55151)
-	
-	t=threading.Thread(target=listen_to_cdm, args=())
+
+	t=threading.Thread(target=listen_to_cdm, args=[routing_table])
 	t.start()
-	
+
 	update_routes()
-	
-def listen_to_cdm():
+
+def listen_to_cdm(routing_table):
+	comando = None
 	while comando is not 'quit':
 		comando = input('')
 		print (comando)
@@ -60,6 +60,7 @@ def listen_to_cdm():
 		if comando[0] == 'add' and len(comando) == 3:
 			add_ve(comando[1], comando[2], routing_table)
 			print ('Enlace adicionado')
+			print (routing_table)
 		elif comando[0] == 'del' and len(comando) == 2:
 			del_ve(comando[1], routing_table)
 			print ('Enlace removido')
@@ -81,8 +82,8 @@ def loopback(operation):
 # 	return routing_table
 
 def add_ve(ip, weight, routing_table):
-	route_row = RouteRow ('')
-	routing_table[count_route_rows] = weight
+	route_row = RouteRow (ip,ip,weight, 0)
+	routing_table.append(route_row)
 	return routing_table
 
 def del_ve(ip, routing_table):
@@ -129,21 +130,21 @@ def start_listening(IP, PORT):
 	orig = (IP, int(PORT))
 	udp.bind(orig)
 	while True:
-		t=threading.Thread(target=handler, args=(udp))
-		t.start() # iniciando nova thread que recebe dados do cliente
+		t=threading.Thread(target=handler, args=[udp])
+		t.start()
 	udp.close()
-	
+
 def handler(udp):
 	message, client = udp.recvfrom(1024)
 	print ("MENSAGEM RECEBIDA")
 	udp.close()
-	
+
 def update_routes():
     threading.Timer(PERIOD, update_routes).start()
     for route in routes:
         if time.time() > route.ttl + 4*PERIOD :
             routes.remove(route)
-    
+
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
