@@ -9,7 +9,8 @@ import threading
 from threading import Timer
 import time
 
-RouteRow = namedtuple('RouteRow', 'destination nextHop cost')
+Routes = []
+RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl')
 count_route_rows = 0
 
 def main(argv):
