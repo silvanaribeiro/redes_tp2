@@ -18,10 +18,10 @@ TAREFAS
   - funcao merge_route P --> OK
   - funcao que retorna nextHop para alcancar destino P --> OK
   - atualizacao rotas (split horizon) P
-  - Timer atualizacao periodica S
+  - Timer atualizacao periodica S --> OK
 - remocao de rota desatualizada S --> OK
 - imprimir payload de mensagem de dado somente se for para o proprio roteador S --> OK
-- restringir parametros de entrada: apenas startup n é obrigatorio
+- restringir parametros de entrada: apenas startup n é obrigatorio S --> OK
 - Envio UDP S --> OK
 - Corrigir Add P --> OK
 - Threading S --> OK

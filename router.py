@@ -17,12 +17,13 @@ count_route_rows = 0
 PORT = 55151
 PERIOD = None
 
-
 def main(argv):
 	opts = None
 	args = None
 	STARTUP = None
 	ADDR = None
+	PERIOD = None
+
 
 	# teste = RouteRow('A','C',2)
 	# print (teste)
@@ -32,31 +33,43 @@ def main(argv):
 	except getopt.GetoptError:
 		print("router.py <ADDR> <PERIOD> [STARTUP]")
 
-	# print (opts)
-	for opt, arg in opts:
-		if opt in ('-a', '--addr'):
-			ADDR = arg
-		elif opt in ('-u', '--update-period'):
-			PERIOD = arg
-		elif opt in ('-s', '--startup-commands'):
-			STARTUP = arg
+	print(opts, args)
+	if opts:
+		for opt, arg in opts:
+			if opt in ('-a', '--addr'):
+				ADDR = arg
+			elif opt in ('-u', '--update-period'):
+				PERIOD = arg
+			elif opt in ('-s', '--startup-commands'):
+				STARTUP = arg
+	elif len(args) >= 2:
+		ADDR = args[0]
+		PERIOD = args[1]
+		if len(args) == 3:
+			STARTUP = args[2]
+			
+	if ADDR is None or PERIOD is None:
+		print("Error on startup. Use either: ")
+		print("router.py <ADDR> <PERIOD> [STARTUP]")
+		print("Or:")
+		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
+	else:	
+		if STARTUP:
+			read_file(STARTUP)
 
-	if STARTUP:
-		read_file(STARTUP)
+		print("OPTS", ADDR, PERIOD, STARTUP)
 
-	print("OPTS", ADDR, PERIOD, STARTUP)
+		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
+		t1.setDaemon(True)
+		t1.start()
+		send_message(ADDR, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
 
-	t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
-	t1.setDaemon(True)
-	t1.start()
-	send_message(ADDR, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
+		t2=threading.Thread(target=listen_to_cdm, args = (ADDR,))
+		t2.setDaemon(True)
+		t2.start()
 
-	t2=threading.Thread(target=listen_to_cdm, args = (ADDR,))
-	t2.setDaemon(True)
-	t2.start()
-
-	update_routes_periodically()
-	remove_old_routes()
+		update_routes_periodically()
+		remove_old_routes()
 
 def listen_to_cdm(ADDR):
 	comando = None
