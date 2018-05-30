@@ -34,7 +34,7 @@ def main(argv):
 
 	# print (opts)
 	for opt, arg in opts:
-		if opt  in ('-a', '--addr'):
+		if opt in ('-a', '--addr'):
 			ADDR = arg
 		elif opt in ('-u', '--update-period'):
 			PERIOD = arg
@@ -55,7 +55,8 @@ def main(argv):
 	t2.setDaemon(True)
 	t2.start()
 
-	update_routes()
+	update_routes_periodically()
+	remove_old_routes()
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -164,12 +165,15 @@ def start_listening(IP, PORT):
 		decode_message(IP, message)
 	udp.close()
 
-def update_routes():
-    threading.Timer(PERIOD, update_routes).start()
+def remove_old_routes():
+    threading.Timer(PERIOD, remove_old_routes).start()
     for route in routing_table:
         if time.time() > route.ttl + 4*PERIOD :
             routing_table.remove(route)
 
+def update_routes_periodically():
+	threading.Timer(PERIOD, update_routes_periodically).start()
+	# FAZ O UPDATE DAS ROTAS AQUI
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
