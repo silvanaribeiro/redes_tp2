@@ -22,7 +22,7 @@ TAREFAS
 - Envio UDP S --> OK
 - Corrigir Add P --> OK
 - Threading S --> OK
-- Send and receive json msgs S
+- Send and receive json msgs S --> OK
 - Receber mensagens por parte S
 
 ----------------------------------------------------------------------
@@ -39,4 +39,3 @@ del <ip>
 trace <ip>
 quit
 
-S: Não entendi se vai ter que ter thread pro "servidor". Acho que não.

@@ -45,10 +45,7 @@ def main(argv):
 
 	t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 	t1.start()
-	send_message(ADDR, PORT, "teste louco da conexao")
-	send_message(ADDR, PORT, "teste louco da conexao2")
-	send_message(ADDR, PORT, "teste louco da conexao3")
-	send_message(ADDR, PORT, "teste louco da conexao4")
+	send_message(ADDR, PORT, encode_message("update", "1.1.1.1", "1.1.1.2", [1,2,3]))
 
 	t=threading.Thread(target=listen_to_cdm, args = (ADDR,))
 	t.start()
@@ -149,9 +146,8 @@ def send_message(HOST, PORT, message):
 	print ("HOST:", HOST)
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
-	print (message.encode('ascii'))
 	print (dest)
-	udp.sendto(message.encode('ascii'), dest)
+	udp.sendto(message.encode('utf-8'), dest)
 	udp.close()
 
 def start_listening(IP, PORT):
@@ -161,7 +157,7 @@ def start_listening(IP, PORT):
 	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
-		print ("MENSAGEM RECEBIDA", message, client)
+		print ("MENSAGEM RECEBIDA", decode_message(message), client)
 	udp.close()
 
 def update_routes():
