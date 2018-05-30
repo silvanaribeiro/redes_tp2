@@ -15,7 +15,7 @@ TAREFAS
 - imprimir payloads S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
-- Corrigir Add P
+- Corrigir Add P -->  OK
 
 ----------------------------------------------------------------------
 INTERPRETAÇÃO DA ESPECIFICACAO:
