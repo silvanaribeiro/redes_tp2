@@ -16,7 +16,9 @@ TAREFAS
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
 - Corrigir Add P
-- Threading S 
+- Threading S --> OK
+- Send and receive json msgs S 
+- Receber mensagens por parte S
 
 ----------------------------------------------------------------------
 INTERPRETAÇÃO DA ESPECIFICACAO:
