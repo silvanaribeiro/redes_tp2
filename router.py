@@ -89,6 +89,22 @@ def add_ve(ip, weight, routing_table):
 def del_ve(ip, routing_table):
 	return routing_table.pop(ip)
 
+def merge_route(new_route, routing_table, cost_hop):
+	index = -1
+	for i in range(0,routing_table.count()):
+		if routing_table[i].destination == new_route.destination:
+			if (new_route.cost < routing_table[i].cost) or (new_route.nextHop == routing_table[i].nextHop): #metrica mudou
+				index = i
+				break
+
+	if index == -1: # nova rota
+		new_route.cost += cost_hop
+		routing_table.append(new_route)
+	else:
+		routing_table[index] = new_route
+		routing_table[index].cost += cost_hop
+
+
 def read_file(file_name, routing_table):
     with open(file_name, "r") as f:
         lines = f.readlines()
