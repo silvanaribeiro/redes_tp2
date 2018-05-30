@@ -12,18 +12,20 @@ TAREFAS
   - funcao que recebe trace e o "reencaminha" para destino P
   - enviar dado quando trace chegar ao destino P
 - tabela de cargas
+	???? S: Se vai ter que dividir a mensagem, talvez tenhamos que colocar qual a ordem de cada parte sendo enviada.
 - roteamento
   - funcao merge_route P --> OK
   - funcao que retorna nextHop para alcancar destino P --> OK
-  - atualizacao rotas P
+  - atualizacao rotas (Timer atualizacao periodica + split horizon) P
 - remocao de rota desatualizada S --> OK
-- imprimir payloads S --> OK
+- imprimir payload de mensagem de dado somente se for para o proprio roteador S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
 - Corrigir Add P --> OK
 - Threading S --> OK
 - Send and receive json msgs S --> OK
-- Receber mensagens por parte S
+- Receber mensagens por parte S --> OK
+- Retornar mensagem de erro à origem informando se não houver rota até o destino.
 
 ----------------------------------------------------------------------
 INTERPRETAÇÃO DA ESPECIFICACAO:

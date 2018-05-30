@@ -1,6 +1,6 @@
 import socket
 from socket import AF_INET, SOCK_DGRAM
-import sys, getopt
+import sys, getopt, os
 import subprocess
 import json
 from pprint import pprint
@@ -9,17 +9,20 @@ import threading
 from threading import Timer
 import time
 
+from sys import exit
+
 routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl')
 count_route_rows = 0
 PORT = 55151
 PERIOD = None
 
+
 def main(argv):
 	opts = None
 	args = None
-	ADDR = None
 	STARTUP = None
+	ADDR = None
 
 	# teste = RouteRow('A','C',2)
 	# print (teste)
@@ -44,19 +47,20 @@ def main(argv):
 	print("OPTS", ADDR, PERIOD, STARTUP)
 
 	t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
+	t1.setDaemon(True)
 	t1.start()
-	send_message(ADDR, PORT, encode_message("update", "1.1.1.1", "1.1.1.2", [1,2,3]))
+	send_message(ADDR, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
 
-	t=threading.Thread(target=listen_to_cdm, args = (ADDR,))
-	t.start()
+	t2=threading.Thread(target=listen_to_cdm, args = (ADDR,))
+	t2.setDaemon(True)
+	t2.start()
 
 	update_routes()
 
 def listen_to_cdm(ADDR):
 	comando = None
-	while comando is not 'quit':
+	while True:
 		comando = input('')
-		print (comando)
 		comando = comando.replace('\n', '')
 		comando = comando.split(" ")
 		if comando[0] == 'add' and len(comando) == 3:
@@ -66,29 +70,30 @@ def listen_to_cdm(ADDR):
 		elif comando[0] == 'del' and len(comando) == 2:
 			del_ve(comando[1], routing_table)
 			print ('Enlace removido')
+			print (routing_table)
 		elif comando[0] == 'trace' and len(comando) == 2:
 			print (get_next_hop(comando[1]))
 			send_trace(ADDR, comando[1])
 			print ('Trace enviado')
+		elif comando[0] == 'quit':
+			os._exit(1)
 
 def send_trace(ADDR, destination):
-
 	json_msg = encode_message("trace", ADDR, destination, "")
 	ip = get_next_hop(destination)
 	if ip is not None:
 		send_message(ip, PORT, json_msg)
 
-# receives string 'add' or 'del'. Pelo que eu entendi a gente só vai usar isso pra inicializar os roteadores mesmo. Talvez nem precisasse estar no programa.
-def loopback(operation):
-	 subprocess.call(['./tests/lo-adresses.sh',operation])
-
 def add_ve(ip, weight, routing_table):
-	route_row = RouteRow (ip,ip,weight, 0)
+	route_row = RouteRow (ip, ip, weight, time.time())
 	routing_table.append(route_row)
 	return routing_table
 
 def del_ve(ip, routing_table):
-	return routing_table.pop(ip)
+    for route in routing_table:
+        if ip == route.destination:
+            routing_table.remove(route)
+    return routing_table
 
 def get_next_hop(destination):
 	for i in range (0,len(routing_table)):
@@ -96,6 +101,7 @@ def get_next_hop(destination):
 			return routing_table[i].nextHop
 
 	return None
+	
 def merge_route(new_route, routing_table, cost_hop):
 	index = -1
 	for i in range(0,routing_table.count()):
@@ -134,16 +140,15 @@ def encode_message(type, source, destination, last_info):
 	elif type is 'trace':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'hops': last_info})
 
-def decode_message(message):
+def decode_message(IP, message):
 	data = json.loads(message)
-	# Prints if it's data type message
-	if data["type"] is 'data':
+	# Prints if it's the destination of the data type message
+	if data["type"] == 'data' and data["destination"] == IP:
 		pprint(data)
 	return data
 
 
 def send_message(HOST, PORT, message):
-	print ("HOST:", HOST)
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
 	print (dest)
@@ -151,13 +156,12 @@ def send_message(HOST, PORT, message):
 	udp.close()
 
 def start_listening(IP, PORT):
-	print("Entrou na start_listening")
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	orig = (IP, int(PORT))
 	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
-		print ("MENSAGEM RECEBIDA", decode_message(message), client)
+		decode_message(IP, message)
 	udp.close()
 
 def update_routes():
