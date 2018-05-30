@@ -6,16 +6,21 @@ TAREFAS
 - Cod decod JSON S --> OK
 - Func Add S --> OK
 - Func Del S --> OK
-- atualizacao rotas P
-- trace p
-- dado P
+- trace
+  - identificar next hop para enviar trace P --> OK
+  - adicionar roteadores percorridos no hops P
+  - funcao que recebe trace e o "reencaminha" para destino P
+  - enviar dado quando trace chegar ao destino P
 - tabela de cargas
-- roteamento P
+- roteamento
+  - funcao merge_route P --> OK
+  - funcao que retorna nextHop para alcancar destino P --> OK
+  - atualizacao rotas P
 - remocao de rota desatualizada S --> OK
 - imprimir payloads S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
-- Corrigir Add P
+- Corrigir Add P --> OK
 - Threading S --> OK
 - Send and receive json msgs S
 - Receber mensagens por parte S

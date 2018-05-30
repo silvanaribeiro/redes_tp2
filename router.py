@@ -12,6 +12,7 @@ import time
 routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl')
 count_route_rows = 0
+PORT = 55151
 PERIOD = None
 
 def main(argv):
@@ -19,7 +20,6 @@ def main(argv):
 	args = None
 	ADDR = None
 	STARTUP = None
-	PORT = 55151
 
 	# teste = RouteRow('A','C',2)
 	# print (teste)
@@ -50,12 +50,12 @@ def main(argv):
 	send_message(ADDR, PORT, "teste louco da conexao3")
 	send_message(ADDR, PORT, "teste louco da conexao4")
 
-	t=threading.Thread(target=listen_to_cdm)
+	t=threading.Thread(target=listen_to_cdm, args = (ADDR,))
 	t.start()
 
 	update_routes()
 
-def listen_to_cdm():
+def listen_to_cdm(ADDR):
 	comando = None
 	while comando is not 'quit':
 		comando = input('')
@@ -70,21 +70,20 @@ def listen_to_cdm():
 			del_ve(comando[1], routing_table)
 			print ('Enlace removido')
 		elif comando[0] == 'trace' and len(comando) == 2:
-			send_trace(comando[1], ADDR)
+			print (get_next_hop(comando[1]))
+			send_trace(ADDR, comando[1])
 			print ('Trace enviado')
 
-def send_trace(ADDR, IP):
-	json_msg = encode_message("trace", ADDR, IP, "teste_hops")
-	send_message(IP, 55151, json_msg)
-	print (IP)
+def send_trace(ADDR, destination):
+
+	json_msg = encode_message("trace", ADDR, destination, "")
+	ip = get_next_hop(destination)
+	if ip is not None:
+		send_message(ip, PORT, json_msg)
 
 # receives string 'add' or 'del'. Pelo que eu entendi a gente só vai usar isso pra inicializar os roteadores mesmo. Talvez nem precisasse estar no programa.
 def loopback(operation):
 	 subprocess.call(['./tests/lo-adresses.sh',operation])
-
-# def add_ve(ip, weight, routing_table):
-# 	routing_table[ip] = weight
-# 	return routing_table
 
 def add_ve(ip, weight, routing_table):
 	route_row = RouteRow (ip,ip,weight, 0)
@@ -94,6 +93,12 @@ def add_ve(ip, weight, routing_table):
 def del_ve(ip, routing_table):
 	return routing_table.pop(ip)
 
+def get_next_hop(destination):
+	for i in range (0,len(routing_table)):
+		if routing_table[i].destination == destination:
+			return routing_table[i].nextHop
+
+	return None
 def merge_route(new_route, routing_table, cost_hop):
 	index = -1
 	for i in range(0,routing_table.count()):
@@ -141,8 +146,11 @@ def decode_message(message):
 
 
 def send_message(HOST, PORT, message):
+	print ("HOST:", HOST)
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
+	print (message.encode('ascii'))
+	print (dest)
 	udp.sendto(message.encode('ascii'), dest)
 	udp.close()
 
