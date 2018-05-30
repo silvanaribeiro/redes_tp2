@@ -11,11 +11,14 @@ TAREFAS
 - dado P
 - tabela de cargas
 - roteamento P
-- remocao de rota desatualizada S
+- remocao de rota desatualizada S --> OK
 - imprimir payloads S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio
 - Envio UDP S --> OK
-- Corrigir Add P -->  OK
+- Corrigir Add P
+- Threading S --> OK
+- Send and receive json msgs S
+- Receber mensagens por parte S
 
 ----------------------------------------------------------------------
 INTERPRETAÇÃO DA ESPECIFICACAO:

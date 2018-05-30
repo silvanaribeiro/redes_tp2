@@ -9,21 +9,21 @@ import threading
 from threading import Timer
 import time
 
-Routes = []
+routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl')
 count_route_rows = 0
+PERIOD = None
 
 def main(argv):
 	opts = None
 	args = None
 	ADDR = None
-	PERIOD = None
 	STARTUP = None
 	PORT = 55151
 
 	# teste = RouteRow('A','C',2)
 	# print (teste)
-	routing_table = list()
+
 	try:
 		opts,args=getopt.getopt(argv,'a:u:s:',[ 'addr=', 'update-period=', 'startup-commands=' ])
 	except getopt.GetoptError:
@@ -39,18 +39,23 @@ def main(argv):
 			STARTUP = arg
 
 	if STARTUP:
-		read_file(STARTUP, routing_table)
+		read_file(STARTUP)
 
-	print(ADDR, PERIOD, STARTUP)
+	print("OPTS", ADDR, PERIOD, STARTUP)
 
-	start_listening(ADDR, 55151)
+	t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
+	t1.start()
+	send_message(ADDR, PORT, "teste louco da conexao")
+	send_message(ADDR, PORT, "teste louco da conexao2")
+	send_message(ADDR, PORT, "teste louco da conexao3")
+	send_message(ADDR, PORT, "teste louco da conexao4")
 
-	t=threading.Thread(target=listen_to_cdm, args=[routing_table])
+	t=threading.Thread(target=listen_to_cdm)
 	t.start()
 
 	update_routes()
 
-def listen_to_cdm(routing_table):
+def listen_to_cdm():
 	comando = None
 	while comando is not 'quit':
 		comando = input('')
@@ -138,28 +143,24 @@ def decode_message(message):
 def send_message(HOST, PORT, message):
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
-	udp.sendto(message, dest)
+	udp.sendto(message.encode('ascii'), dest)
 	udp.close()
 
 def start_listening(IP, PORT):
+	print("Entrou na start_listening")
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	orig = (IP, int(PORT))
 	udp.bind(orig)
 	while True:
-		t=threading.Thread(target=handler, args=[udp])
-		t.start()
-	udp.close()
-
-def handler(udp):
-	message, client = udp.recvfrom(1024)
-	print ("MENSAGEM RECEBIDA")
+		message, client = udp.recvfrom(1024)
+		print ("MENSAGEM RECEBIDA", message, client)
 	udp.close()
 
 def update_routes():
     threading.Timer(PERIOD, update_routes).start()
-    for route in routes:
+    for route in routing_table:
         if time.time() > route.ttl + 4*PERIOD :
-            routes.remove(route)
+            routing_table.remove(route)
 
 
 if __name__ == "__main__":
