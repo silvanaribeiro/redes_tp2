@@ -247,14 +247,14 @@ def update_routes_periodically(PERIOD, ADDR):
 		threading.Timer(int(PERIOD), update_routes_periodically, args = [PERIOD, ADDR]).start()
 
 
-def update(ADDR):
-	print ("---------Sending updates------------")
-	routers = get_neighbors(routing_table)
-	for router in routers:
-		json_msg = encode_message("update", ADDR, router, routing_table)
-		router = router.replace("'","")
-		send_message(router, PORT, json_msg)
-	print ("Updates enviados")
+# def update(ADDR):
+# 	print ("---------Sending updates------------")
+# 	routers = get_neighbors(routing_table)
+# 	for router in routers:
+# 		json_msg = encode_message("update", ADDR, router, routing_table)
+# 		router = router.replace("'","")
+# 		send_message(router, PORT, json_msg)
+# 	print ("Updates enviados")
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):
