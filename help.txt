@@ -12,8 +12,7 @@ TAREFAS
   - funcao que recebe trace e o "reencaminha" para destino P
   - enviar dado quando trace chegar ao destino P
   - Retornar mensagem de erro à origem informando se não houver rota até o destino.
-- tabela de cargas
-	???? S: Se vai ter que dividir a mensagem, talvez tenhamos que colocar qual a ordem de cada parte sendo enviada.
+- tabela de cargas S --> Ok
 - roteamento
   - funcao merge_route P --> OK
   - funcao que retorna nextHop para alcancar destino P --> OK
