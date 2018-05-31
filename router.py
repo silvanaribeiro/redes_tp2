@@ -176,7 +176,9 @@ def send_message(HOST, PORT, message):
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
 	print (dest)
+	print (message)
 	udp.sendto(message.encode('utf-8'), dest)
+	print ("Mensagem enviada")
 	udp.close()
 
 def start_listening(IP, PORT):
@@ -204,7 +206,9 @@ def update():
 	routers = get_neighbors(routing_table)
 	for router in routers:
 		json_msg = encode_message("update", origin, router, routing_table)
-		send_message(router, PORT, json_msg)
+		# send_message(router, PORT, json_msg)
+		# send_message(router, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
+		send_message("127.0.1.2", PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
