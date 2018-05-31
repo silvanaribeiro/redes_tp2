@@ -17,6 +17,8 @@ TAREFAS
 - roteamento
   - funcao merge_route P --> OK
   - funcao que retorna nextHop para alcancar destino P --> OK
+  - envio de mensagens update P --> EM ANDAMENTO
+  - tratamento de mensages update recebidas usando merge_route P
   - atualizacao rotas (split horizon) P
   - Timer atualizacao periodica S --> OK
 - remocao de rota desatualizada S --> OK
@@ -42,4 +44,3 @@ add <ip> <peso>
 del <ip>
 trace <ip>
 quit
-
