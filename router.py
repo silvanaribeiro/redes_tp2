@@ -8,6 +8,7 @@ from collections import namedtuple
 import threading
 from threading import Timer
 import time
+import random as ra
 
 from sys import exit
 
@@ -209,6 +210,14 @@ def update():
 		# send_message(router, PORT, json_msg)
 		# send_message(router, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
 		send_message("127.0.1.2", PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
+
+# receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
+def load_balance(tied_routes):
+    a = 1
+    b = len(tied_routes)+1
+    chosen = ra.uniform(a,b)
+    chosen = int(chosen)
+    return tied_routes[chosen-1]
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
