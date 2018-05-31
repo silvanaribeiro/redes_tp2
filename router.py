@@ -25,10 +25,6 @@ def main(argv):
 	ADDR = None
 	PERIOD = None
 
-
-	# teste = RouteRow('A','C',2)
-	# print (teste)
-
 	try:
 		opts,args=getopt.getopt(argv,'a:u:s:',[ 'addr=', 'update-period=', 'startup-commands=' ])
 	except getopt.GetoptError:
@@ -70,7 +66,7 @@ def main(argv):
 		t2.start()
 
 		origin = ADDR
-		update_routes_periodically(PERIOD)
+		update_routes_periodically(PERIOD, ADDR)
 		# remove_old_routes()
 
 def listen_to_cdm(ADDR):
@@ -176,8 +172,6 @@ def decode_message(IP, message):
 def send_message(HOST, PORT, message):
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
-	print (dest)
-	print (message)
 	udp.sendto(message.encode('utf-8'), dest)
 	print ("Mensagem enviada")
 	udp.close()
@@ -188,7 +182,10 @@ def start_listening(IP, PORT):
 	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
-		decode_message(IP, message)
+		json_msg = decode_message(IP, message)
+		if json_msg["type"] == 'update':
+			print ("Update do %s recebido" % (json_msg["source"]) )
+			print ("Distances:", json_msg["distances"])
 	udp.close()
 
 def remove_old_routes():
@@ -197,19 +194,19 @@ def remove_old_routes():
         if time.time() > route.ttl + 4*PERIOD :
             routing_table.remove(route)
 
-def update_routes_periodically(PERIOD):
+def update_routes_periodically(PERIOD, ADDR):
 	print ("PERIOD:", PERIOD)
-	threading.Timer(int(PERIOD), update).start()
+	threading.Timer(int(PERIOD), update, args = [ADDR]).start()
 
 
-def update():
+def update(ADDR):
 	print ("---------Sending updates------------")
 	routers = get_neighbors(routing_table)
 	for router in routers:
-		json_msg = encode_message("update", origin, router, routing_table)
-		# send_message(router, PORT, json_msg)
-		# send_message(router, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
-		send_message("127.0.1.2", PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
+		json_msg = encode_message("update", ADDR, router, routing_table)
+		router = router.replace("'","")
+		send_message(router, PORT, json_msg)
+	print ("Updates enviados")
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):
