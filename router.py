@@ -16,7 +16,7 @@ RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl')
 count_route_rows = 0
 PORT = 55151
 PERIOD = None
-
+origin = None
 def main(argv):
 	opts = None
 	args = None
@@ -47,13 +47,13 @@ def main(argv):
 		PERIOD = args[1]
 		if len(args) == 3:
 			STARTUP = args[2]
-			
+
 	if ADDR is None or PERIOD is None:
 		print("Error on startup. Use either: ")
 		print("router.py <ADDR> <PERIOD> [STARTUP]")
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
-	else:	
+	else:
 		if STARTUP:
 			read_file(STARTUP)
 
@@ -68,8 +68,9 @@ def main(argv):
 		t2.setDaemon(True)
 		t2.start()
 
-		update_routes_periodically()
-		remove_old_routes()
+		origin = ADDR
+		update_routes_periodically(PERIOD)
+		# remove_old_routes()
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -113,9 +114,16 @@ def get_next_hop(destination):
 	for i in range (0,len(routing_table)):
 		if routing_table[i].destination == destination:
 			return routing_table[i].nextHop
-
 	return None
-	
+
+def get_neighbors(routing_table):
+	neighbors = []
+	for router in routing_table:
+		if router not in neighbors:
+			neighbors.append(router.nextHop)
+
+	return neighbors
+
 def merge_route(new_route, routing_table, cost_hop):
 	index = -1
 	for i in range(0,routing_table.count()):
@@ -132,7 +140,7 @@ def merge_route(new_route, routing_table, cost_hop):
 		routing_table[index].cost += cost_hop
 
 
-def read_file(file_name, routing_table):
+def read_file(file_name):
     with open(file_name, "r") as f:
         lines = f.readlines()
         for line in lines:
@@ -149,10 +157,12 @@ def read_file(file_name, routing_table):
 def encode_message(type, source, destination, last_info):
 	if type is 'data':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'payload': last_info})
-	elif type is 'update': # tem que arrumar o distances. Eh outro json.
-		return json.dumps({'type': type, 'source': source, 'destination': destination, 'distances': last_info})
+	elif type is 'update': # tem que arrumar o distances. Eh outro json --> OK
+		table = json.dumps(last_info)
+		return json.dumps({'type': type, 'source': source, 'destination': destination, 'distances': table})
 	elif type is 'trace':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'hops': last_info})
+
 
 def decode_message(IP, message):
 	data = json.loads(message)
@@ -184,9 +194,17 @@ def remove_old_routes():
         if time.time() > route.ttl + 4*PERIOD :
             routing_table.remove(route)
 
-def update_routes_periodically():
-	threading.Timer(PERIOD, update_routes_periodically).start()
-	# FAZ O UPDATE DAS ROTAS AQUI
+def update_routes_periodically(PERIOD):
+	print ("PERIOD:", PERIOD)
+	threading.Timer(int(PERIOD), update).start()
+
+
+def update():
+	print ("---------Sending updates------------")
+	routers = get_neighbors(routing_table)
+	for router in routers:
+		json_msg = encode_message("update", origin, router, routing_table)
+		send_message(router, PORT, json_msg)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
