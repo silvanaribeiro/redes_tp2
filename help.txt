@@ -8,9 +8,9 @@ TAREFAS
 - Func Del S --> OK
 - trace
   - identificar next hop para enviar trace P --> OK
-  - adicionar roteadores percorridos no hops P
-  - funcao que recebe trace e o "reencaminha" para destino P
-  - enviar dado quando trace chegar ao destino P
+  - adicionar roteadores percorridos no hops P --> OK
+  - funcao que recebe trace e o "reencaminha" para destino P --> OK
+  - enviar dado quando trace chegar ao destino P --> EM DESENVOLVIMENTO
   - Retornar mensagem de erro à origem informando se não houver rota até o destino.
 - enviar dados
   - tabela de cargas S --> Ok
