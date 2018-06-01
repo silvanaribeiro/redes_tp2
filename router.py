@@ -66,6 +66,8 @@ def main(argv):
 		t2.start()
 
 		origin = ADDR
+		# coloquei o timer aqui so pra ficar mais facil de fazer os testes
+		time.sleep(10)
 		update_routes_periodically(PERIOD, ADDR)
 		# remove_old_routes()
 
@@ -85,16 +87,19 @@ def listen_to_cdm(ADDR):
 			print (routing_table)
 		elif comando[0] == 'trace' and len(comando) == 2:
 			print (get_next_hop(comando[1]))
-			send_trace(ADDR, comando[1])
+			routers = list ()
+			send_trace_or_data("trace", ADDR, comando[1], routers)
 			print ('Trace enviado')
 		elif comando[0] == 'quit':
 			os._exit(1)
 
-def send_trace(ADDR, destination):
-	json_msg = encode_message("trace", ADDR, destination, "")
+def send_trace_or_data(type, ADDR, destination, routers):
+	json_msg = encode_message(type, ADDR, destination, routers)
 	ip = get_next_hop(destination)
 	if ip is not None:
 		send_message(ip, PORT, json_msg)
+
+
 
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
@@ -212,10 +217,10 @@ def start_listening(IP, PORT):
 		message, client = udp.recvfrom(1024)
 		json_msg = decode_message(IP, message)
 		if json_msg["type"] == 'update':
-			print ("Update do vizinho %s recebido" % (json_msg["source"]) )
+			# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
 			new_routing_table = json.loads(json_msg["distances"])
-			print ("ROTA ANTES DO UPDATE")
-			print_table (routing_table)
+			# print ("ROTA ANTES DO UPDATE")
+			# print_table (routing_table)
 			for new_route in new_routing_table:
 				# print ("rota:", new_route)
 				if new_route[0] not in IP and new_route[4] not in IP: #split horizon
@@ -225,9 +230,22 @@ def start_listening(IP, PORT):
 					# print ("Route processed")
 				# else:
 				# 	print ("rota NAO aceita no split horizon")
-			print ("TABELA DEPOIS DO UPDATE:")
-			print_table (routing_table)
-			print ("------------------------------------------------------------")
+			# print ("TABELA DEPOIS DO UPDATE:")
+			# print_table (routing_table)
+			# print ("------------------------------------------------------------")
+		elif json_msg["type"] == 'trace':
+			routers = json_msg["hops"]
+			routers.append(IP)
+			print ("Caminho trace ate agora:", routers)
+			if json_msg["destination"] == IP: # trace chegou ao destino!
+				payload = json.dumps (json_msg)
+				send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
+			else: # trace segue seu caminho
+				send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
+		elif json_msg["type"] == 'data':
+			if json_msg["destination"] != IP: # data segue seu caminho
+				print ("Data passou por aqui!")
+				send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
 def remove_old_routes():
@@ -237,13 +255,14 @@ def remove_old_routes():
             routing_table.remove(route)
 
 def update_routes_periodically(PERIOD, ADDR):
-		print ("---------Sending updates------------")
+		# print ("---------Sending updates------------")
 		routers = get_neighbors(routing_table)
+		# print ("VIZINHOS:", routers)
 		for router in routers:
 			json_msg = encode_message("update", ADDR, router, routing_table)
 			router = router.replace("'","")
 			send_message(router, PORT, json_msg)
-		print ("Updates enviados")
+		# print ("Updates enviados")
 		threading.Timer(int(PERIOD), update_routes_periodically, args = [PERIOD, ADDR]).start()
 
 

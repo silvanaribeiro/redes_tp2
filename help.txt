@@ -14,6 +14,9 @@ TAREFAS
   - Retornar mensagem de erro à origem informando se não houver rota até o destino.
 - enviar dados
   - tabela de cargas S --> Ok
+  - funcao que recebe o dado e o "reencaminha" para destino P --> OK
+  - usar a tabela de cargas
+
 - roteamento
   - funcao merge_route P --> OK
   - funcao que retorna nextHop para alcancar destino P --> OK
@@ -21,6 +24,7 @@ TAREFAS
   - tratamento de mensages update recebidas usando merge_route P --> OK
   - atualizacao rotas (split horizon) P --> OK
   - Timer atualizacao periodica S --> OK
+  - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO
 - remocao de rota desatualizada S --> OK
 - imprimir payload de mensagem de dado somente se for para o proprio roteador S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio S --> OK
