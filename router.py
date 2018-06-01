@@ -69,27 +69,30 @@ def main(argv):
 
 def listen_to_cdm(ADDR):
 	comando = None
-	while True:
-		comando = input('')
-		comando = comando.replace('\n', '')
-		comando = comando.split(" ")
-		if comando[0] == 'add' and len(comando) == 3:
-			add_ve(comando[1], comando[2], routing_table, ADDR)
-			print ('Enlace adicionado')
-			print (routing_table)
-		elif comando[0] == 'del' and len(comando) == 2:
-			del_ve(comando[1], routing_table)
-			print ('Enlace removido')
-			print (routing_table)
-			update(ADDR)
-		elif comando[0] == 'trace' and len(comando) == 2:
-			print (get_next_hop(comando[1]))
-			routers = list ()
-			send_trace_or_data("trace", ADDR, comando[1], routers)
-			print ('Trace enviado')
-		elif comando[0] == 'quit':
-			os._exit(1)
-
+	try:
+		while True:
+			comando = input('')
+			comando = comando.replace('\n', '')
+			comando = comando.split(" ")
+			if comando[0] == 'add' and len(comando) == 3:
+				add_ve(comando[1], comando[2], routing_table, ADDR)
+				print ('Enlace adicionado')
+				print (routing_table)
+			elif comando[0] == 'del' and len(comando) == 2:
+				del_ve(comando[1], routing_table)
+				print ('Enlace removido')
+				print (routing_table)
+				update(ADDR)
+			elif comando[0] == 'trace' and len(comando) == 2:
+				print (get_next_hop(comando[1]))
+				routers = list ()
+				send_trace_or_data("trace", ADDR, comando[1], routers)
+				print ('Trace enviado')
+			elif comando[0] == 'quit':
+				os._exit(1)
+	except Exception as e:
+		os._exit(1)
+		
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
 	ip = get_next_hop(destination)
@@ -249,14 +252,13 @@ def start_listening(IP, PORT):
 
 def remove_old_routes(ADDR):
 	is_there_change = False
-    threading.Timer(PERIOD, remove_old_routes, args = [ADDR]).start()
-    for route in routing_table:
-        if time.time() > route.ttl + 4*PERIOD :
-            routing_table.remove(route)
+	threading.Timer(PERIOD, remove_old_routes, args = [ADDR]).start()
+	for route in routing_table:
+		if time.time() > route.ttl + 4*PERIOD :
+			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:
 		update(ADDR)
-	
 
 def update_routes_periodically(PERIOD, ADDR):
 	print ("PERIOD:", PERIOD)
