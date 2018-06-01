@@ -17,7 +17,8 @@ RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl sentBy')
 count_route_rows = 0
 PORT = 55151
 PERIOD = None
-origin = None
+ROUTER_ADDR = None
+
 def main(argv):
 	opts = None
 	args = None
@@ -51,25 +52,20 @@ def main(argv):
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
 	else:
+		ROUTER_ADDR = ADDR
 		if STARTUP:
 			read_file(STARTUP, ADDR)
-
-		# print("OPTS", ADDR, PERIOD, STARTUP)
 
 		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 		t1.setDaemon(True)
 		t1.start()
-		# send_message(ADDR, PORT, encode_message("data", "1.1.1.1", "127.0.1.1", [1,2,3]))
 
 		t2=threading.Thread(target=listen_to_cdm, args = (ADDR,))
 		t2.setDaemon(True)
 		t2.start()
 
-		origin = ADDR
-		# coloquei o timer aqui so pra ficar mais facil de fazer os testes
-		time.sleep(10)
 		update_routes_periodically(PERIOD, ADDR)
-		# remove_old_routes()
+		remove_old_routes(ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -85,6 +81,7 @@ def listen_to_cdm(ADDR):
 			del_ve(comando[1], routing_table)
 			print ('Enlace removido')
 			print (routing_table)
+			update(ADDR)
 		elif comando[0] == 'trace' and len(comando) == 2:
 			print (get_next_hop(comando[1]))
 			routers = list ()
@@ -98,8 +95,9 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	ip = get_next_hop(destination)
 	if ip is not None:
 		send_message(ip, PORT, json_msg)
-
-
+	else:
+		# retorna mensagem pro sender falando que n?o tem rota seria aqui?
+		json_msg = encode_message('error', ADDR, ROUTER_ADDR, "There is no route available from " + ROUTER_ADDR + "to " + destination)
 
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
@@ -131,7 +129,7 @@ def get_neighbors(routing_table):
 
 	return neighbors
 
-def print_table (routing_table):
+def print_table(routing_table):
 	print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format('destination','nextHop','cost', 'ttl', 'sentBy'))
 	# print ('{:<10}'.format('destination'))
 	for route in routing_table:
@@ -187,17 +185,18 @@ def read_file(file_name, ADDR):
 def encode_message(type, source, destination, last_info):
 	if type is 'data':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'payload': last_info})
-	elif type is 'update': # tem que arrumar o distances. Eh outro json --> OK
-		table = json.dumps(last_info)
-		return json.dumps({'type': type, 'source': source, 'destination': destination, 'distances': table})
+	elif type is 'update':
+		return json.dumps({'type': type, 'source': source, 'destination': destination, 'distances': last_info})
 	elif type is 'trace':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'hops': last_info})
+	else: # error
+		return json.dumps({'type': type, 'source': source, 'destination': destination, 'message': last_info})
 
 
 def decode_message(IP, message):
 	data = json.loads(message)
-	# Prints if it's the destination of the data type message
-	if data["type"] == 'data' and data["destination"] == IP:
+	# Prints if it's the destination of the data type message or if it's an error message
+	if (data["type"] == 'data' or data["type"] == 'error') and data["destination"] == IP:
 		pprint(data)
 	return data
 
@@ -248,32 +247,29 @@ def start_listening(IP, PORT):
 				send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
-def remove_old_routes():
-    threading.Timer(PERIOD, remove_old_routes).start()
+def remove_old_routes(ADDR):
+	is_there_change = False
+    threading.Timer(PERIOD, remove_old_routes, args = [ADDR]).start()
     for route in routing_table:
         if time.time() > route.ttl + 4*PERIOD :
             routing_table.remove(route)
+			is_there_change = True
+	if is_there_change:
+		update(ADDR)
+	
 
 def update_routes_periodically(PERIOD, ADDR):
-		# print ("---------Sending updates------------")
-		routers = get_neighbors(routing_table)
-		# print ("VIZINHOS:", routers)
-		for router in routers:
-			json_msg = encode_message("update", ADDR, router, routing_table)
-			router = router.replace("'","")
-			send_message(router, PORT, json_msg)
-		# print ("Updates enviados")
-		threading.Timer(int(PERIOD), update_routes_periodically, args = [PERIOD, ADDR]).start()
+	print ("PERIOD:", PERIOD)
+	threading.Timer(int(PERIOD), update, args = [ADDR]).start()
 
-
-# def update(ADDR):
-# 	print ("---------Sending updates------------")
-# 	routers = get_neighbors(routing_table)
-# 	for router in routers:
-# 		json_msg = encode_message("update", ADDR, router, routing_table)
-# 		router = router.replace("'","")
-# 		send_message(router, PORT, json_msg)
-# 	print ("Updates enviados")
+def update(ADDR):
+	print ("---------Sending updates------------")
+	routers = get_neighbors(routing_table)
+	for router in routers:
+		json_msg = encode_message("update", ADDR, router, routing_table)
+		router = router.replace("'","")
+		send_message(router, PORT, json_msg)
+	print ("Updates enviados")
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):

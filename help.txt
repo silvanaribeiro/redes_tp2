@@ -11,7 +11,8 @@ TAREFAS
   - adicionar roteadores percorridos no hops P --> OK
   - funcao que recebe trace e o "reencaminha" para destino P --> OK
   - enviar dado quando trace chegar ao destino P --> EM DESENVOLVIMENTO
-  - Retornar mensagem de erro à origem informando se não houver rota até o destino.
+  - Retornar mensagem de erro à origem informando se não houver rota até o destino.  
+	S: ve se eu entendi o lugar certo que isso tem que ser feito? Linha 97
 - enviar dados
   - tabela de cargas S --> Ok
   - funcao que recebe o dado e o "reencaminha" para destino P --> OK
@@ -39,10 +40,10 @@ TAREFAS
 INTERPRETAÇÃO DA ESPECIFICACAO:
 
 Exemplo de chamada do programa:
-S: Nâo. O roteador DCCRIP deve ser inicializado como segue:./router.py <ADDR> <PERIOD> [STARTUP]. seu roteador pode receber os parâmetrosADDR,PERIODeSTARTUPatravésde opções de linha de comando chamadas--addr,--update-periode--startup-commands.
-python router.py --addr 127.0.1.1 --update-period pi(?) --startup-commands startup.txt
+python router.py --addr 127.0.1.1 --update-period 10 --startup-commands startup.txt
 
 P: periodo pode ser mudado em tempo de execucao?
+S: Pelo visto, não. Pode mudar entre execuções.
 
 Comandos do teclado:
 
