@@ -82,7 +82,9 @@ def listen_to_cdm(ADDR):
 				del_ve(comando[1], routing_table)
 				print ('Enlace removido')
 				print (routing_table)
-				update(ADDR)
+				t1 = threading.Thread(target=update, args=(ADDR))
+				t1.setDaemon(True)
+				t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
 				print (get_next_hop(comando[1]))
 				routers = list ()
@@ -258,7 +260,9 @@ def remove_old_routes(ADDR):
 			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:
-		update(ADDR)
+		t1 = threading.Thread(target=update, args=(ADDR))
+		t1.setDaemon(True)
+		t1.start()
 
 def update_routes_periodically(PERIOD, ADDR):
 	print ("PERIOD:", PERIOD)
