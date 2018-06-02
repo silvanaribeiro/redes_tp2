@@ -6,13 +6,16 @@ TAREFAS
 - Cod decod JSON S --> OK
 - Func Add S --> OK
 - Func Del S --> OK
+
 - trace
   - identificar next hop para enviar trace P --> OK
   - adicionar roteadores percorridos no hops P --> OK
   - funcao que recebe trace e o "reencaminha" para destino P --> OK
   - enviar dado quando trace chegar ao destino P --> EM DESENVOLVIMENTO
-  - Retornar mensagem de erro à origem informando se não houver rota até o destino.  
+  - Retornar mensagem de erro à origem informando se não houver rota até o destino.
 	S: ve se eu entendi o lugar certo que isso tem que ser feito? Linha 97
+  P: acho que ta certo! Vou fazer testes
+
 - enviar dados
   - tabela de cargas S --> Ok
   - funcao que recebe o dado e o "reencaminha" para destino P --> OK
@@ -26,6 +29,8 @@ TAREFAS
   - atualizacao rotas (split horizon) P --> OK
   - Timer atualizacao periodica S --> OK
   - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO
+  - CORRIGIR remove_old_routes
+
 - remocao de rota desatualizada S --> OK
 - imprimir payload de mensagem de dado somente se for para o proprio roteador S --> OK
 - restringir parametros de entrada: apenas startup n é obrigatorio S --> OK

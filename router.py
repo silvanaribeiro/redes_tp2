@@ -65,7 +65,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR)
-		remove_old_routes(ADDR)
+		# remove_old_routes(PERIOD, ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -88,13 +88,14 @@ def listen_to_cdm(ADDR):
 			elif comando[0] == 'trace' and len(comando) == 2:
 				print (get_next_hop(comando[1]))
 				routers = list ()
+				routers.append(ADDR)
 				send_trace_or_data("trace", ADDR, comando[1], routers)
 				print ('Trace enviado')
 			elif comando[0] == 'quit':
 				os._exit(1)
 	except Exception as e:
 		os._exit(1)
-		
+
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
 	ip = get_next_hop(destination)
@@ -202,7 +203,9 @@ def decode_message(IP, message):
 	data = json.loads(message)
 	# Prints if it's the destination of the data type message or if it's an error message
 	if (data["type"] == 'data' or data["type"] == 'error') and data["destination"] == IP:
-		pprint(data)
+		payload = json.loads(data["payload"])
+		print ("message from %s:" % (data["source"]) )
+		print(payload)
 	return data
 
 
@@ -222,7 +225,8 @@ def start_listening(IP, PORT):
 		json_msg = decode_message(IP, message)
 		if json_msg["type"] == 'update':
 			# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
-			new_routing_table = json.loads(json_msg["distances"])
+			# new_routing_table = json.loads(json_msg["distances"])
+			new_routing_table = json_msg["distances"]
 			# print ("ROTA ANTES DO UPDATE")
 			# print_table (routing_table)
 			for new_route in new_routing_table:
@@ -252,11 +256,12 @@ def start_listening(IP, PORT):
 				send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
-def remove_old_routes(ADDR):
+def remove_old_routes(PERIOD, ADDR):
 	is_there_change = False
 	threading.Timer(PERIOD, remove_old_routes, args = [ADDR]).start()
 	for route in routing_table:
-		if time.time() > route.ttl + 4*PERIOD :
+		if time.time() > (route.ttl + 4*float(PERIOD)):
+			print ("Entrou no if")
 			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:
@@ -265,17 +270,18 @@ def remove_old_routes(ADDR):
 		t1.start()
 
 def update_routes_periodically(PERIOD, ADDR):
-	print ("PERIOD:", PERIOD)
-	threading.Timer(int(PERIOD), update, args = [ADDR]).start()
+	# print ("PERIOD:", PERIOD)
+	update(ADDR)
+	threading.Timer(int(PERIOD), update_routes_periodically, args = [PERIOD,ADDR]).start()
 
 def update(ADDR):
-	print ("---------Sending updates------------")
+	# print ("---------Sending updates------------")
 	routers = get_neighbors(routing_table)
 	for router in routers:
 		json_msg = encode_message("update", ADDR, router, routing_table)
 		router = router.replace("'","")
 		send_message(router, PORT, json_msg)
-	print ("Updates enviados")
+	# print ("Updates enviados")
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):
