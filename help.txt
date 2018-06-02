@@ -18,7 +18,7 @@ TAREFAS
   - tabela de cargas S --> Ok
   - funcao que recebe o dado e o "reencaminha" para destino P --> OK
   - usar a tabela de cargas
-  - reroteamento imediato
+  - reroteamento imediato S -->
 
 - roteamento
   - funcao merge_route P --> OK

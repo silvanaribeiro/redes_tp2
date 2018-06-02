@@ -98,12 +98,22 @@ def listen_to_cdm(ADDR):
 
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
+	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
 		send_message(ip, PORT, json_msg)
 	else:
-		# retorna mensagem pro sender falando que n?o tem rota seria aqui?
-		json_msg = encode_message('error', ADDR, ROUTER_ADDR, "There is no route available from " + ROUTER_ADDR + "to " + destination)
+		messagem_sent = False
+		while count_chances <= 2:
+			time.sleep(5)
+			ip = get_next_hop(destination)
+			count_chances += 1
+			if ip is not None:
+				send_message(ip, PORT, json_msg)
+				messagem_sent = True
+				break
+		if not messagem_sent:	
+			json_msg = encode_message('error', ADDR, ROUTER_ADDR, "There is no route available from " + ROUTER_ADDR + "to " + destination)
 
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
@@ -257,7 +267,6 @@ def start_listening(IP, PORT):
 	udp.close()
 
 def remove_old_routes(PERIOD, ADDR):
-	print("entrou")
 	threading.Timer(int(PERIOD), remove_old_routes, args = [PERIOD, ADDR]).start()
 	is_there_change = False
 	for route in routing_table:
