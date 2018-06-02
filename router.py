@@ -65,7 +65,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR)
-		# remove_old_routes(PERIOD, ADDR)
+		remove_old_routes(PERIOD, ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -257,11 +257,11 @@ def start_listening(IP, PORT):
 	udp.close()
 
 def remove_old_routes(PERIOD, ADDR):
+	print("entrou")
+	threading.Timer(int(PERIOD), remove_old_routes, args = [PERIOD, ADDR]).start()
 	is_there_change = False
-	threading.Timer(PERIOD, remove_old_routes, args = [ADDR]).start()
 	for route in routing_table:
 		if time.time() > (route.ttl + 4*float(PERIOD)):
-			print ("Entrou no if")
 			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:

@@ -12,14 +12,13 @@ TAREFAS
   - adicionar roteadores percorridos no hops P --> OK
   - funcao que recebe trace e o "reencaminha" para destino P --> OK
   - enviar dado quando trace chegar ao destino P --> EM DESENVOLVIMENTO
-  - Retornar mensagem de erro à origem informando se não houver rota até o destino.
-	S: ve se eu entendi o lugar certo que isso tem que ser feito? Linha 97
-  P: acho que ta certo! Vou fazer testes
+  - Retornar mensagem de erro à origem informando se não houver rota até o destino. S --> OK mas falta testar
 
 - enviar dados
   - tabela de cargas S --> Ok
   - funcao que recebe o dado e o "reencaminha" para destino P --> OK
   - usar a tabela de cargas
+  - reroteamento imediato
 
 - roteamento
   - funcao merge_route P --> OK
@@ -29,7 +28,7 @@ TAREFAS
   - atualizacao rotas (split horizon) P --> OK
   - Timer atualizacao periodica S --> OK
   - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO
-  - CORRIGIR remove_old_routes
+  - CORRIGIR remove_old_routes S --> OK
 
 - remocao de rota desatualizada S --> OK
 - imprimir payload de mensagem de dado somente se for para o proprio roteador S --> OK
