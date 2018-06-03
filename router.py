@@ -65,7 +65,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR)
-		# remove_old_routes(PERIOD, ADDR)
+		remove_old_routes(PERIOD, ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
