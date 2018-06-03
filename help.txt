@@ -49,6 +49,7 @@ python router.py --addr 127.0.1.1 --update-period 10 --startup-commands startup.
 P: periodo pode ser mudado em tempo de execucao?
 S: Pelo visto, não. Pode mudar entre execuções.
 
+
 Comandos do teclado:
 
 add <ip> <peso>

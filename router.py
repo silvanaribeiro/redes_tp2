@@ -82,7 +82,7 @@ def listen_to_cdm(ADDR):
 				del_ve(comando[1], routing_table)
 				print ('Enlace removido')
 				print (routing_table)
-				t1 = threading.Thread(target=update, args=(ADDR))
+				t1 = threading.Thread(target=update, args=(ADDR,))
 				t1.setDaemon(True)
 				t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
@@ -91,7 +91,7 @@ def listen_to_cdm(ADDR):
 				routers.append(ADDR)
 				send_trace_or_data("trace", ADDR, comando[1], routers)
 				print ('Trace enviado')
-			elif comando[0] == 'print': # TODO: DELETAR COMANDO ANTES DA ENTREGA
+			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
 				print_table (routing_table)
 			elif comando[0] == 'quit':
 				os._exit(1)
@@ -103,6 +103,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
+		print ("Enviando mensagem")
 		send_message(ip, PORT, json_msg)
 	else:
 		messagem_sent = False
@@ -123,10 +124,11 @@ def add_ve(ip, weight, routing_table, addedBy):
 	return routing_table
 
 def del_ve(ip, routing_table):
-    for route in routing_table:
-        if ip == route.destination:
-            routing_table.remove(route)
-    return routing_table
+	for route in routing_table:
+		if ip == route.nextHop:
+			routing_table.remove(route)
+	print_table(routing_table)
+	return routing_table
 
 def get_next_hop(destination):
 	tied_routes = get_tied_routes(routing_table, destination)
@@ -136,7 +138,8 @@ def get_next_hop(destination):
 				return routing_table[i].nextHop
 		return None
 	else:
-		return load_balance(tied_routes)
+		route = load_balance(tied_routes)
+		return route.nextHop
 
 
 
@@ -164,7 +167,6 @@ def get_tied_routes(routing_table, destination):
 
 def print_table(routing_table):
 	print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format('destination','nextHop','cost', 'ttl', 'sentBy'))
-	# print ('{:<10}'.format('destination'))
 	for route in routing_table:
 		d,n,c,t,s = route
 		print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format(d, n, c, t, s))
@@ -191,18 +193,14 @@ def has_route(routing_table, new_route, neighbor, cost_hop):
 def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 	index = -1
 	old_route = None
+	# PARA DEBUG:
 	# print ("New route:", new_route)
 	# print ("--------------")
 	final_cost = 0
 	for route in routing_table:
 		final_cost = cost_hop
-		# print ("Route:", route)
-
-		# se rota foi criada pelo proprio router, desconsidera soma de custos
-		if route.sentBy == ADDR:
-			final_cost = 0
-
 		if route.destination == new_route.destination:
+			# PARA DEBUG:
 			# print ("new_route.cost + final_cost:", new_route.cost + final_cost)
 			# print ("route.cost", route.cost)
 			if final_cost is None:
@@ -219,11 +217,12 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 			elif ((new_route.nextHop != route.nextHop)
 				and ((new_route.cost + final_cost) == route.cost)): #rota alternativa encontrada
 				index = -1
-			elif ((new_route.nextHop == route.nextHop) # rever isso aqui
+			elif ((new_route.nextHop == route.nextHop)
 				and ((new_route.cost + final_cost) == route.cost)): #rota alternativa encontrada
 				index = -1
 			else: # rota sera descartada
 				index = 0
+	# PARA DEBUG:
 	# print ("INDEX DPS DO LOOP:", index)
 	if index == -1: # nova rota
 		new_cost = new_route.cost + final_cost
@@ -243,7 +242,6 @@ def read_file(file_name, ADDR):
         for line in lines:
             command = line.replace('\n', '')
             commands = command.split(" ")
-            # print(commands)
             if commands[0] != 'add':
                 print("Invalid command was read in startup file:", commands[0])
             if len(commands) != 3:
@@ -263,7 +261,6 @@ def encode_message(type, source, destination, last_info):
 
 
 def decode_message(IP, message):
-	# print ("MESSAGE:",message)
 	data = json.loads(message)
 	# Prints if it's the destination of the data type message or if it's an error message
 	if (data["type"] == 'data' or data["type"] == 'error') and data["destination"] == IP:
@@ -276,8 +273,11 @@ def decode_message(IP, message):
 def send_message(HOST, PORT, message):
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (HOST, int(PORT))
+
+	# PARA DEBUG
+	# print ("DEST:",dest)
+	# print ("MESSAGE:",message)
 	udp.sendto(message.encode('utf-8'), dest)
-	# print ("Mensagem enviada")
 	udp.close()
 
 def start_listening(IP, PORT):
@@ -288,20 +288,26 @@ def start_listening(IP, PORT):
 		message, client = udp.recvfrom(1024)
 		json_msg = decode_message(IP, message)
 		if json_msg["type"] == 'update':
+			# PARA DEBUG:
 			# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
-			# new_routing_table = json.loads(json_msg["distances"])
+
 			new_routing_table = json_msg["distances"]
+			# PARA DEBUG:
 			# print ("ROTA ANTES DO UPDATE")
 			# print_table (routing_table)
 			for new_route in new_routing_table:
+				# PARA DEBUG:
 				# print ("rota:", new_route)
 				if new_route[0] not in IP and new_route[4] not in IP: #split horizon
+					# PARA DEBUG:
 					# print ("rota aceita no split horizon")
 					new_route = RouteRow(new_route[0], new_route[1], new_route[2], new_route[3], new_route[4])
-					# faz merge apenas de rotas novas/atualizadas
+
+					# Verifica se rota ja existe na tabela, fazendo merge apenas de rotas novas/atualizadas
 					if (has_route(routing_table, new_route, json_msg["source"], get_cost(json_msg["source"])) is False):
 						merge_route(new_route, routing_table, get_cost(json_msg["source"]), IP, json_msg["source"])
-					# print ("Route processed")
+
+			# PARA DEBUG:
 				# else:
 				# 	print ("rota NAO aceita no split horizon")
 			# print ("TABELA DEPOIS DO UPDATE:")
@@ -311,7 +317,6 @@ def start_listening(IP, PORT):
 			routers = json_msg["hops"]
 			routers.append(IP)
 			print ("Caminho trace ate agora:", routers)
-			print_table (routing_table)
 			if json_msg["destination"] == IP: # trace chegou ao destino!
 				payload = json.dumps (json_msg)
 				send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
@@ -336,19 +341,16 @@ def remove_old_routes(PERIOD, ADDR):
 		t1.start()
 
 def update_routes_periodically(PERIOD, ADDR):
-	# print ("PERIOD:", PERIOD)
 	update(ADDR)
 	threading.Timer(int(PERIOD), update_routes_periodically, args = (PERIOD, ADDR)).start()
 
 def update(ADDR):
 	# print ("---------Sending updates------------")
 	routers = get_neighbors(routing_table)
-	print_table(routing_table)
 	for router in routers:
 		json_msg = encode_message("update", ADDR, router, routing_table)
 		router = router.replace("'","")
 		send_message(router, PORT, json_msg)
-	# print ("Updates enviados")
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):
