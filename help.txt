@@ -11,13 +11,13 @@ TAREFAS
   - identificar next hop para enviar trace P --> OK
   - adicionar roteadores percorridos no hops P --> OK
   - funcao que recebe trace e o "reencaminha" para destino P --> OK
-  - enviar dado quando trace chegar ao destino P --> EM DESENVOLVIMENTO
+  - enviar dado quando trace chegar ao destino P --> OK
   - Retornar mensagem de erro à origem informando se não houver rota até o destino. S --> OK mas falta testar
 
 - enviar dados
   - tabela de cargas S --> Ok
   - funcao que recebe o dado e o "reencaminha" para destino P --> OK
-  - usar a tabela de cargas
+  - usar a tabela de cargas P --> OK, necessario testar mais
   - reroteamento imediato S -->
 
 - roteamento
@@ -27,7 +27,7 @@ TAREFAS
   - tratamento de mensages update recebidas usando merge_route P --> OK
   - atualizacao rotas (split horizon) P --> OK
   - Timer atualizacao periodica S --> OK
-  - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO
+  - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO P
   - CORRIGIR remove_old_routes S --> OK
 
 - remocao de rota desatualizada S --> OK
