@@ -65,7 +65,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR)
-		remove_old_routes(PERIOD, ADDR)
+		# remove_old_routes(PERIOD, ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -178,11 +178,22 @@ def has_route(routing_table, new_route, neighbor, cost_hop):
 
 	return False
 
+# Realiza o merge entre as rotas do roteador e as do vizinho
+# Possiveis situacoes:
+# - Rota nao existe na tabela de roteamento
+# 	Nesse caso, rota é adicionada na tabela
+# - Ja existe uma rota para o destino, porem de custo MAIOR
+# 	Nesse caso, a rota de melhor custo deve permanecer
+# - Ja existe uma rota para o destino, porem de custo MENOR
+# 	Nesse caso, a new_route eh descartada
+# - Ja existe uma rota para o destino, de custo IGUAL
+# 	Nesse caso, ambas as rotas devem ser mantidas na tabela
 def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 	index = -1
 	old_route = None
 	# print ("New route:", new_route)
 	# print ("--------------")
+	final_cost = 0
 	for route in routing_table:
 		final_cost = cost_hop
 		# print ("Route:", route)
@@ -190,7 +201,7 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 		# se rota foi criada pelo proprio router, desconsidera soma de custos
 		if route.sentBy == ADDR:
 			final_cost = 0
-			
+
 		if route.destination == new_route.destination:
 			# print ("new_route.cost + final_cost:", new_route.cost + final_cost)
 			# print ("route.cost", route.cost)
@@ -202,6 +213,7 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 				and ((new_route.cost + final_cost) < route.cost)): #melhor rota encontrada
 				index = routing_table.index(route)
 				old_route = route
+				# remove rota a ser atualizada
 				routing_table.remove(route)
 				break
 			elif ((new_route.nextHop != route.nextHop)
@@ -210,13 +222,15 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 			elif ((new_route.nextHop == route.nextHop) # rever isso aqui
 				and ((new_route.cost + final_cost) == route.cost)): #rota alternativa encontrada
 				index = -1
+			else: # rota sera descartada
+				index = 0
 	# print ("INDEX DPS DO LOOP:", index)
 	if index == -1: # nova rota
 		new_cost = new_route.cost + final_cost
 		new_route = (RouteRow(new_route.destination, neighbor, new_cost,
 					new_route.ttl, neighbor))
 		routing_table.append(new_route)
-	elif index > 0:
+	elif index > 0: # rota sera atualizada
 		new_cost = new_route.cost + final_cost
 		new_route = (RouteRow(new_route.destination, neighbor, new_cost,
 					 new_route.ttl, neighbor))
