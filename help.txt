@@ -27,7 +27,7 @@ TAREFAS
   - tratamento de mensages update recebidas usando merge_route P --> OK
   - atualizacao rotas (split horizon) P --> OK
   - Timer atualizacao periodica S --> OK
-  - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO P
+  - CORRIGIR DADO DUPLICADO NA TABELA DE ROTEAMENTO P --> OK
   - CORRIGIR remove_old_routes S --> OK
 
 - remocao de rota desatualizada S --> OK

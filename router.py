@@ -149,13 +149,15 @@ def get_cost(destination):
 			return route.cost
 
 def get_neighbors(routing_table):
-	neighbors = []
+	neighbors = list()
 	for router in routing_table:
 		if router not in neighbors:
 			neighbors.append(router.nextHop)
 
+	neighbors = list(set(neighbors))
 	return neighbors
 
+# Identifica e retorna as rotas de mesmo peso para um mesmo destino
 def get_tied_routes(routing_table, destination):
 	destination_routes = list(route for  route in routing_table if (route.destination == destination))
 	tied_routes = list(route for route in destination_routes if(route.cost == aux_route.cost and route.nextHop != aux_route.nextHop for aux_route in destination_routes))
@@ -164,13 +166,14 @@ def get_tied_routes(routing_table, destination):
 		return tied_routes
 	else:
 		return None
-
+# Funcao para facilitar DEBUG. Imprime a tabela de roteamento em forma de tabela
 def print_table(routing_table):
 	print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format('destination','nextHop','cost', 'ttl', 'sentBy'))
 	for route in routing_table:
 		d,n,c,t,s = route
 		print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format(d, n, c, t, s))
 
+# Verifica se uma rota ja existe na tabela de roteamento
 def has_route(routing_table, new_route, neighbor, cost_hop):
 	for route in routing_table:
 
@@ -261,6 +264,10 @@ def encode_message(type, source, destination, last_info):
 
 
 def decode_message(IP, message):
+	# Verifica versao do python para tratamento do message
+	python_version  = str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+	if python_version == '3.5':
+		message = message.decode('utf-8')
 	data = json.loads(message)
 	# Prints if it's the destination of the data type message or if it's an error message
 	if (data["type"] == 'data' or data["type"] == 'error') and data["destination"] == IP:
@@ -286,11 +293,11 @@ def start_listening(IP, PORT):
 	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
+		# print ("Mensagem recebida!")
 		json_msg = decode_message(IP, message)
 		if json_msg["type"] == 'update':
 			# PARA DEBUG:
 			# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
-
 			new_routing_table = json_msg["distances"]
 			# PARA DEBUG:
 			# print ("ROTA ANTES DO UPDATE")
@@ -347,6 +354,7 @@ def update_routes_periodically(PERIOD, ADDR):
 def update(ADDR):
 	# print ("---------Sending updates------------")
 	routers = get_neighbors(routing_table)
+	print ("Vizinhos:", routers)
 	for router in routers:
 		json_msg = encode_message("update", ADDR, router, routing_table)
 		router = router.replace("'","")
