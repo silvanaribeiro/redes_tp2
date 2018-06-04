@@ -273,7 +273,7 @@ def encode_message(type, source, destination, last_info):
 
 
 def decode_message(IP, message):
-	# Verifica versao do python para tratamento do message
+	# Verifica versao do python para tratamento da mensagem
 	python_version  = str(sys.version_info[0]) + '.' + str(sys.version_info[1])
 	if python_version == '3.5':
 		message = message.decode('utf-8')
