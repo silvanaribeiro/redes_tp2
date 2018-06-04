@@ -16,6 +16,7 @@ routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl sentBy')
 count_route_rows = 0
 PORT = 55151
+# PORT = 55152 # porta utilizada pelo emulador do monitor
 PERIOD = None
 ROUTER_ADDR = None
 
@@ -31,7 +32,6 @@ def main(argv):
 	except getopt.GetoptError:
 		print("router.py <ADDR> <PERIOD> [STARTUP]")
 
-	# print(opts, args)
 	if opts:
 		for opt, arg in opts:
 			if opt in ('-a', '--addr'):
@@ -64,8 +64,8 @@ def main(argv):
 		t2.setDaemon(True)
 		t2.start()
 
-		update_routes_periodically(PERIOD, ADDR)
-		remove_old_routes(PERIOD, ADDR)
+		update_routes_periodically(PERIOD, ADDR, routing_table)
+		# remove_old_routes(PERIOD, ADDR)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -82,7 +82,7 @@ def listen_to_cdm(ADDR):
 				del_ve(comando[1], routing_table)
 				print ('Enlace removido')
 				print (routing_table)
-				t1 = threading.Thread(target=update, args=(ADDR,))
+				t1 = threading.Thread(target=update, args=(ADDR, routing_table))
 				t1.setDaemon(True)
 				t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
@@ -157,6 +157,14 @@ def get_neighbors(routing_table):
 	neighbors = list(set(neighbors))
 	return neighbors
 
+# Verifica se roteador existe na tabela de roteamento como vizinho
+def is_neighbor(routing_table, router):
+	neighbors = get_neighbors(routing_table)
+	for neighbor in neighbors:
+		if neighbor == router:
+			return True
+
+	return False
 # Identifica e retorna as rotas de mesmo peso para um mesmo destino
 def get_tied_routes(routing_table, destination):
 	destination_routes = list(route for  route in routing_table if (route.destination == destination))
@@ -166,6 +174,7 @@ def get_tied_routes(routing_table, destination):
 		return tied_routes
 	else:
 		return None
+
 # Funcao para facilitar DEBUG. Imprime a tabela de roteamento em forma de tabela
 def print_table(routing_table):
 	print ("{:<10} {:<10} {:<5} {:<15} {:<10}".format('destination','nextHop','cost', 'ttl', 'sentBy'))
@@ -294,45 +303,47 @@ def start_listening(IP, PORT):
 	while True:
 		message, client = udp.recvfrom(1024)
 		# print ("Mensagem recebida!")
+		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
-		if json_msg["type"] == 'update':
-			# PARA DEBUG:
-			# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
-			new_routing_table = json_msg["distances"]
-			# PARA DEBUG:
-			# print ("ROTA ANTES DO UPDATE")
-			# print_table (routing_table)
-			for new_route in new_routing_table:
+		if is_neighbor(routing_table, json_msg["source"]) is True:
+			if json_msg["type"] == 'update':
 				# PARA DEBUG:
-				# print ("rota:", new_route)
-				if new_route[0] not in IP and new_route[4] not in IP: #split horizon
+				# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
+				new_routing_table = json_msg["distances"]
+				# PARA DEBUG:
+				# print ("ROTA ANTES DO UPDATE")
+				# print_table (routing_table)
+				for new_route in new_routing_table:
 					# PARA DEBUG:
-					# print ("rota aceita no split horizon")
-					new_route = RouteRow(new_route[0], new_route[1], new_route[2], new_route[3], new_route[4])
+					# print ("rota:", new_route)
+					if new_route[0] not in IP and new_route[4] not in IP: #split horizon
+						# PARA DEBUG:
+						# print ("rota aceita no split horizon")
+						new_route = RouteRow(new_route[0], new_route[1], new_route[2], new_route[3], new_route[4])
 
-					# Verifica se rota ja existe na tabela, fazendo merge apenas de rotas novas/atualizadas
-					if (has_route(routing_table, new_route, json_msg["source"], get_cost(json_msg["source"])) is False):
-						merge_route(new_route, routing_table, get_cost(json_msg["source"]), IP, json_msg["source"])
+						# Verifica se rota ja existe na tabela, fazendo merge apenas de rotas novas/atualizadas
+						if (has_route(routing_table, new_route, json_msg["source"], get_cost(json_msg["source"])) is False):
+							merge_route(new_route, routing_table, get_cost(json_msg["source"]), IP, json_msg["source"])
 
-			# PARA DEBUG:
-				# else:
-				# 	print ("rota NAO aceita no split horizon")
-			# print ("TABELA DEPOIS DO UPDATE:")
-			# print_table (routing_table)
-			# print ("------------------------------------------------------------")
-		elif json_msg["type"] == 'trace':
-			routers = json_msg["hops"]
-			routers.append(IP)
-			print ("Caminho trace ate agora:", routers)
-			if json_msg["destination"] == IP: # trace chegou ao destino!
-				payload = json.dumps (json_msg)
-				send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
-			else: # trace segue seu caminho
-				send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
-		elif json_msg["type"] == 'data':
-			if json_msg["destination"] != IP: # data segue seu caminho
-				print ("Data passou por aqui!")
-				send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
+				# PARA DEBUG:
+					# else:
+					# 	print ("rota NAO aceita no split horizon")
+				# print ("TABELA DEPOIS DO UPDATE:")
+				# print_table (routing_table)
+				# print ("------------------------------------------------------------")
+			elif json_msg["type"] == 'trace':
+				routers = json_msg["hops"]
+				routers.append(IP)
+				print ("Caminho trace ate agora:", routers)
+				if json_msg["destination"] == IP: # trace chegou ao destino!
+					payload = json.dumps (json_msg)
+					send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
+				else: # trace segue seu caminho
+					send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
+			elif json_msg["type"] == 'data':
+				if json_msg["destination"] != IP: # data segue seu caminho
+					print ("Data passou por aqui!")
+					send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
 def remove_old_routes(PERIOD, ADDR):
@@ -347,14 +358,14 @@ def remove_old_routes(PERIOD, ADDR):
 		t1.setDaemon(True)
 		t1.start()
 
-def update_routes_periodically(PERIOD, ADDR):
-	update(ADDR)
-	threading.Timer(int(PERIOD), update_routes_periodically, args = (PERIOD, ADDR)).start()
+def update_routes_periodically(PERIOD, ADDR, routing_table):
+	update(ADDR, routing_table)
+	threading.Timer(int(PERIOD), update_routes_periodically, args = (PERIOD, ADDR, routing_table)).start()
 
-def update(ADDR):
+def update(ADDR, routing_table):
 	# print ("---------Sending updates------------")
 	routers = get_neighbors(routing_table)
-	print ("Vizinhos:", routers)
+	# print ("Vizinhos:", routers)
 	for router in routers:
 		json_msg = encode_message("update", ADDR, router, routing_table)
 		router = router.replace("'","")
