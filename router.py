@@ -65,7 +65,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR, routing_table)
-		# remove_old_routes(PERIOD, ADDR)
+		remove_old_routes(PERIOD, ADDR, routing_table)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -103,7 +103,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
-		print ("Enviando mensagem")
+		# print ("Enviando mensagem")
 		send_message(ip, PORT, json_msg)
 	else:
 		messagem_sent = False
@@ -147,6 +147,7 @@ def get_cost(destination):
 	for route in routing_table:
 		if route.destination == destination:
 			return route.cost
+	return 0
 
 def get_neighbors(routing_table):
 	neighbors = list()
@@ -346,15 +347,15 @@ def start_listening(IP, PORT):
 					send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
-def remove_old_routes(PERIOD, ADDR):
-	threading.Timer(int(PERIOD), remove_old_routes, args = (PERIOD, ADDR)).start()
+def remove_old_routes(PERIOD, ADDR, routing_table):
+	threading.Timer(int(PERIOD), remove_old_routes, args = (PERIOD, ADDR, routing_table)).start()
 	is_there_change = False
 	for route in routing_table:
 		if time.time() > (route.ttl + 4*float(PERIOD)):
 			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:
-		t1 = threading.Thread(target=update, args=(ADDR,))
+		t1 = threading.Thread(target=update, args=(ADDR, routing_table))
 		t1.setDaemon(True)
 		t1.start()
 
