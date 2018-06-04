@@ -186,9 +186,12 @@ def print_table(routing_table):
 # Verifica se uma rota ja existe na tabela de roteamento
 def has_route(routing_table, new_route, neighbor, cost_hop):
 	for route in routing_table:
-
 		if ((route.destination == new_route.destination) and (route.nextHop == neighbor)
 			and (route.cost == (new_route.cost + cost_hop)) and (route.sentBy == neighbor)):
+			routing_table.remove(route)
+			new_route = (RouteRow(route.destination, route.nextHop , route.cost,
+					 time.time(), route.sentBy))
+			routing_table.append(new_route)
 			return True
 
 	return False
