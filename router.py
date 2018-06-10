@@ -70,40 +70,38 @@ def main(argv):
 
 def listen_to_cdm(ADDR):
 	comando = None
-	#try:
-	while True:
-		comando = input('')
-		comando = comando.replace('\n', '')
-		comando = comando.split(" ")
-		if comando[0] == 'add' and len(comando) == 3:
-			add_ve(comando[1], comando[2], routing_table, ADDR)
-			print ('Enlace adicionado')
-			print (routing_table)
-		elif comando[0] == 'del' and len(comando) == 2:
-			del_ve(comando[1], routing_table)
-			print ('Enlace removido')
-			print (routing_table)
-			t1 = threading.Thread(target=update, args=(ADDR, routing_table))
-			t1.setDaemon(True)
-			t1.start()
-		elif comando[0] == 'trace' and len(comando) == 2:
-			print("recebeu trace", comando[1])
-			print (get_next_hop(comando[1]))
-			print("pegou next")
-			routers = list()
-			routers.append(ADDR)
-			send_trace_or_data("trace", ADDR, comando[1], routers)
-			print ('Trace enviado')
-		elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
-			print_table (routing_table)
-		elif comando[0] == 'quit':
-			os._exit(1)
-	#except Exception as e:
-	#	print(e)
-	#	os._exit(1)
+	try:
+		while True:
+			comando = input('')
+			comando = comando.replace('\n', '')
+			comando = comando.split(" ")
+			if comando[0] == 'add' and len(comando) == 3:
+				add_ve(comando[1], comando[2], routing_table, ADDR)
+				print ('Enlace adicionado')
+				print (routing_table)
+			elif comando[0] == 'del' and len(comando) == 2:
+				del_ve(comando[1], routing_table)
+				print ('Enlace removido')
+				print (routing_table)
+				t1 = threading.Thread(target=update, args=(ADDR, routing_table))
+				t1.setDaemon(True)
+				t1.start()
+			elif comando[0] == 'trace' and len(comando) == 2:
+				print("recebeu trace", comando[1])
+				print (get_next_hop(comando[1]))
+				print("pegou next")
+				routers = list()
+				routers.append(ADDR)
+				send_trace_or_data("trace", ADDR, comando[1], routers)
+				print ('Trace enviado')
+			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
+				print_table (routing_table)
+			elif comando[0] == 'quit':
+				os._exit(1)
+	except Exception as e:
+		os._exit(1)
 
 def send_trace_or_data(type, ADDR, destination, routers):
-	print("send trace or data", type, ADDR, destination, routers)
 	json_msg = encode_message(type, ADDR, destination, routers)
 	count_chances = 0
 	ip = get_next_hop(destination)
@@ -121,7 +119,6 @@ def send_trace_or_data(type, ADDR, destination, routers):
 				messagem_sent = True
 				break
 		if not messagem_sent:
-			print("send trace or data msg not sent", type, ADDR, destination, ROUTER_ADDR)
 			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + "to " + destination)
 			send_message(ADDR, ADDR, PORT, json_msg)
 			
@@ -141,7 +138,8 @@ def get_next_hop(destination):
 	tied_routes = get_tied_routes(routing_table, destination)
 	if tied_routes is None or tied_routes == []:
 		for route in routing_table:
-			if route.destination == destination:
+			print(route.destination, destination)
+			if str(route.destination).replace("'", "") == destination:
 				return route.nextHop
 		return None
 	else:
@@ -314,11 +312,15 @@ def decode_message(IP, message):
 
 
 def send_message(ADDR, HOST, PORT, message):
-	dest = (HOST, int(PORT))
+	print("send message", ADDR, HOST, PORT, message)
+	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	dest = (str(HOST), int(PORT))
+
 	# PARA DEBUG
-	# print ("DEST:",dest)
-	# print ("MESSAGE:",message)
+	print ("DEST:",dest)
+	print ("MESSAGE:",message)
 	udp.sendto(message.encode('utf-8'), dest)
+	udp.close()
 
 def start_listening(IP, PORT):
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
