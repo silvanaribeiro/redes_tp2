@@ -57,6 +57,8 @@ def main(argv):
 		if STARTUP:
 			read_file(STARTUP, ADDR)
 
+		orig = (ADDR, int(PORT))
+		udp.bind(orig)
 		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 		t1.setDaemon(True)
 		t1.start()
@@ -70,36 +72,36 @@ def main(argv):
 
 def listen_to_cdm(ADDR):
 	comando = None
-	try:
-		while True:
-			comando = input('')
-			comando = comando.replace('\n', '')
-			comando = comando.split(" ")
-			if comando[0] == 'add' and len(comando) == 3:
-				add_ve(comando[1], comando[2], routing_table, ADDR)
-				print ('Enlace adicionado')
-				print (routing_table)
-			elif comando[0] == 'del' and len(comando) == 2:
-				del_ve(comando[1], routing_table)
-				print ('Enlace removido')
-				print (routing_table)
-				t1 = threading.Thread(target=update, args=(ADDR, routing_table))
-				t1.setDaemon(True)
-				t1.start()
-			elif comando[0] == 'trace' and len(comando) == 2:
-				print("recebeu trace", comando[1])
-				print (get_next_hop(comando[1]))
-				print("pegou next")
-				routers = list()
-				routers.append(ADDR)
-				send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
-				print ('Trace enviado')
-			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
-				print_table (routing_table)
-			elif comando[0] == 'quit':
-				os._exit(1)
-	except Exception as e:
-		os._exit(1)
+	# try:
+	while True:
+		comando = input('')
+		comando = comando.replace('\n', '')
+		comando = comando.split(" ")
+		if comando[0] == 'add' and len(comando) == 3:
+			add_ve(comando[1], comando[2], routing_table, ADDR)
+			print ('Enlace adicionado')
+			print (routing_table)
+		elif comando[0] == 'del' and len(comando) == 2:
+			del_ve(comando[1], routing_table)
+			print ('Enlace removido')
+			print (routing_table)
+			t1 = threading.Thread(target=update, args=(ADDR, routing_table))
+			t1.setDaemon(True)
+			t1.start()
+		elif comando[0] == 'trace' and len(comando) == 2:
+			print("recebeu trace", comando[1])
+			print (get_next_hop(comando[1]))
+			print("pegou next")
+			routers = list()
+			routers.append(ADDR)
+			send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
+			print ('Trace enviado')
+		elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
+			print_table (routing_table)
+		elif comando[0] == 'quit':
+			os._exit(1)
+	# except Exception as e:
+	# 	os._exit(1)
 
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
@@ -108,6 +110,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	if ip is not None:
 		print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
 		send_message(ADDR, ip, PORT, json_msg)
+		# print ("Enviado")
 	else:
 		messagem_sent = False
 		while count_chances <= 2:
@@ -121,7 +124,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 		if not messagem_sent:
 			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + "to " + destination)
 			send_message(ADDR, ADDR, PORT, json_msg)
-			
+
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
 	routing_table.append(route_row)
@@ -156,7 +159,7 @@ def get_neighbors(routing_table):
 	neighbors = list()
 	for router in routing_table:
 		if router not in neighbors:
-			neighbors.append(router.nextHop)
+			neighbors.append(router.nextHop.replace("'",""))
 
 	neighbors = list(set(neighbors))
 	return neighbors
@@ -181,8 +184,10 @@ def get_routingtable_to_dict(routing_table):
 # Verifica se roteador existe na tabela de roteamento como vizinho
 def is_neighbor(routing_table, router):
 	neighbors = get_neighbors(routing_table)
+	# print ("neighbors:", neighbors)
+	# print ("router:", router)
 	for neighbor in neighbors:
-		if neighbor == router:
+		if neighbor.replace("'","") == router:
 			return True
 
 	return False
@@ -312,26 +317,35 @@ def decode_message(IP, message):
 
 
 def send_message(ADDR, HOST, PORT, message):
-	print("send message", ADDR, HOST, PORT, message)
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	# print("send message", ADDR, HOST, PORT, message)
+	# udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (str(HOST), int(PORT))
 
 	# PARA DEBUG
-	#print ("DEST:",dest)
+	teste = decode_message(ADDR,message)
+	# if (teste["type"] == "trace"):
+	# 	print ("DEST:",dest)
+	# 	print ("VOU ENVIAR A MENSAGEM")
 	#print ("MESSAGE:",message)
+
 	udp.sendto(message.encode('utf-8'), dest)
-	udp.close()
+	# if (teste["type"] == "trace"):
+	# 	print ("ENVIEI A MENSAGEM")
+	# udp.close()
 
 def start_listening(IP, PORT):
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-	orig = (IP, int(PORT))
-	udp.bind(orig)
+	# udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+	# orig = (IP, int(PORT))
+	# udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
-		
+
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
-		if is_neighbor(routing_table, json_msg["source"]) is True:
+		# print ("is_neighbor:", is_neighbor(routing_table, json_msg["source"]))
+		# print ("Client:", str(client[0]).replace("'",""))
+		# print ("is_neighbor:", is_neighbor(routing_table, str(client[0]).replace("'","")))
+		if is_neighbor(routing_table, str(client[0]).replace("'","")) is True:
 			if json_msg["type"] == 'update':
 				# PARA DEBUG:
 				# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
@@ -370,6 +384,8 @@ def start_listening(IP, PORT):
 					payload = json.dumps(json_msg)
 					send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
 				else: # trace segue seu caminho
+					print ("Seguindo o caminho")
+					# print ("destino:", json_msg["destination"])
 					send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
 			elif json_msg["type"] == 'data':
 				if json_msg["destination"] != IP: # data segue seu caminho
