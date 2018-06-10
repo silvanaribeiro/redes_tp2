@@ -87,8 +87,16 @@ def listen_to_cdm(ADDR):
 				t1.setDaemon(True)
 				t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
-				print("recebeu trace", comando[1])
-				print (get_next_hop(comando[1]))
+				ip_trace = ''
+				if not comando[1].startswith("'"):
+					ip_trace = "'" + comando[1]
+				else:
+					ip_trace = comando[1]
+				if not comando[1].startswith("'"):
+					ip_trace += "'"
+					
+				print("recebeu trace", ip_trace)
+				print (get_next_hop(ip_trace))
 				print("pegou next")
 				routers = list()
 				routers.append(ADDR)
@@ -312,13 +320,13 @@ def decode_message(IP, message):
 
 
 def send_message(ADDR, HOST, PORT, message):
-	print("send message", ADDR, HOST, PORT, message)
+	#print("send message", ADDR, HOST, PORT, message)
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (str(HOST), int(PORT))
 
 	# PARA DEBUG
-	print ("DEST:",dest)
-	print ("MESSAGE:",message)
+	#print ("DEST:",dest)
+	#print ("MESSAGE:",message)
 	udp.sendto(message.encode('utf-8'), dest)
 	udp.close()
 
@@ -328,6 +336,7 @@ def start_listening(IP, PORT):
 	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
+		
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
 		if is_neighbor(routing_table, json_msg["source"]) is True:
@@ -361,11 +370,12 @@ def start_listening(IP, PORT):
 				# print_table (routing_table)
 				# print ("------------------------------------------------------------")
 			elif json_msg["type"] == 'trace':
+				print("RECEBENDO MENSAGEM DE TRACE", json_msg, client)
 				routers = json_msg["hops"]
 				routers.append(IP)
 				print ("Caminho trace ate agora:", routers)
 				if json_msg["destination"] == IP: # trace chegou ao destino!
-					payload = json.dumps (json_msg)
+					payload = json.dumps(json_msg)
 					send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
 				else: # trace segue seu caminho
 					send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
