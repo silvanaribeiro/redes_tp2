@@ -15,10 +15,11 @@ from sys import exit
 routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl sentBy')
 count_route_rows = 0
-PORT = 55151
-# PORT = 55152 # porta utilizada pelo emulador do monitor
+# PORT = 55151
+PORT = 55152 # porta utilizada pelo emulador do monitor
 PERIOD = None
 ROUTER_ADDR = None
+udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
 
 def main(argv):
 	opts = None
@@ -56,6 +57,10 @@ def main(argv):
 		if STARTUP:
 			read_file(STARTUP, ADDR)
 
+
+		orig = (ADDR, int(PORT))
+		udp.bind(orig)
+
 		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 		t1.setDaemon(True)
 		t1.start()
@@ -65,7 +70,7 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR, routing_table)
-		remove_old_routes(PERIOD, ADDR, routing_table)
+		# remove_old_routes(PERIOD, ADDR, routing_table)
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -104,7 +109,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	ip = get_next_hop(destination)
 	if ip is not None:
 		# print ("Enviando mensagem")
-		send_message(ip, PORT, json_msg)
+		send_message(ADDR, ip, PORT, json_msg)
 	else:
 		messagem_sent = False
 		while count_chances <= 2:
@@ -112,7 +117,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 			ip = get_next_hop(destination)
 			count_chances += 1
 			if ip is not None:
-				send_message(ip, PORT, json_msg)
+				send_message(ADDR, ip, PORT, json_msg)
 				messagem_sent = True
 				break
 		if not messagem_sent:
@@ -141,8 +146,6 @@ def get_next_hop(destination):
 		route = load_balance(tied_routes)
 		return route.nextHop
 
-
-
 def get_cost(destination):
 	for route in routing_table:
 		if route.destination == destination:
@@ -158,6 +161,23 @@ def get_neighbors(routing_table):
 	neighbors = list(set(neighbors))
 	return neighbors
 
+# Retorna tabela com split horizon aplicado nesta
+def get_splithorizon_routing_table(routing_table, router):
+	new_routing_table  = list()
+	for r in routing_table:
+		if r.sentBy != router and r.destination != router:
+			new_routing_table.append(r)
+
+	return new_routing_table
+
+# Retorna tabela de roteamento como um dicionario
+def get_routingtable_to_dict(routing_table):
+	routing_dict = dict()
+	for route in routing_table:
+		routing_dict[route.destination] = route.cost
+
+	return routing_dict
+
 # Verifica se roteador existe na tabela de roteamento como vizinho
 def is_neighbor(routing_table, router):
 	neighbors = get_neighbors(routing_table)
@@ -166,6 +186,7 @@ def is_neighbor(routing_table, router):
 			return True
 
 	return False
+
 # Identifica e retorna as rotas de mesmo peso para um mesmo destino
 def get_tied_routes(routing_table, destination):
 	destination_routes = list(route for  route in routing_table if (route.destination == destination))
@@ -243,12 +264,12 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 	if index == -1: # nova rota
 		new_cost = new_route.cost + final_cost
 		new_route = (RouteRow(new_route.destination, neighbor, new_cost,
-					new_route.ttl, neighbor))
+					time.time(), neighbor))
 		routing_table.append(new_route)
 	elif index > 0: # rota sera atualizada
 		new_cost = new_route.cost + final_cost
 		new_route = (RouteRow(new_route.destination, neighbor, new_cost,
-					 new_route.ttl, neighbor))
+					 time.time(), neighbor))
 		routing_table.append(new_route)
 
 
@@ -290,43 +311,40 @@ def decode_message(IP, message):
 	return data
 
 
-def send_message(HOST, PORT, message):
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def send_message(ADDR, HOST, PORT, message):
 	dest = (HOST, int(PORT))
-
 	# PARA DEBUG
 	# print ("DEST:",dest)
 	# print ("MESSAGE:",message)
 	udp.sendto(message.encode('utf-8'), dest)
-	udp.close()
 
 def start_listening(IP, PORT):
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	orig = (IP, int(PORT))
-	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
-		# print ("Mensagem recebida!")
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
 		if is_neighbor(routing_table, json_msg["source"]) is True:
 			if json_msg["type"] == 'update':
 				# PARA DEBUG:
 				# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
+				# print (json_msg)
 				new_routing_table = json_msg["distances"]
 				# PARA DEBUG:
+				# print ("TABELA RECEBIDA:", new_routing_table)
 				# print ("ROTA ANTES DO UPDATE")
 				# print_table (routing_table)
 				for new_route in new_routing_table:
 					# PARA DEBUG:
 					# print ("rota:", new_route)
-					if new_route[0] not in IP and new_route[4] not in IP: #split horizon
+					if new_route not in IP: #split horizon
 						# PARA DEBUG:
 						# print ("rota aceita no split horizon")
-						new_route = RouteRow(new_route[0], new_route[1], new_route[2], new_route[3], new_route[4])
+						# new_route = RouteRow(new_route[0], new_route[1], new_route[2], new_route[3], new_route[4])
+						new_route = RouteRow(new_route, json_msg["source"], new_routing_table[new_route], time.time(), json_msg["source"])
 
 						# Verifica se rota ja existe na tabela, fazendo merge apenas de rotas novas/atualizadas
 						if (has_route(routing_table, new_route, json_msg["source"], get_cost(json_msg["source"])) is False):
+							# print ("nova rota")
 							merge_route(new_route, routing_table, get_cost(json_msg["source"]), IP, json_msg["source"])
 
 				# PARA DEBUG:
@@ -371,9 +389,12 @@ def update(ADDR, routing_table):
 	routers = get_neighbors(routing_table)
 	# print ("Vizinhos:", routers)
 	for router in routers:
-		json_msg = encode_message("update", ADDR, router, routing_table)
+		new_routing_table = get_splithorizon_routing_table(routing_table, router)
+		# print_table(new_routing_table)
+		# print ("dict:", get_routingtable_to_dict(new_routing_table))
+		json_msg = encode_message("update", ADDR, router, get_routingtable_to_dict(new_routing_table))
 		router = router.replace("'","")
-		send_message(router, PORT, json_msg)
+		send_message(ADDR, router, PORT, json_msg)
 
 # receives list with tied routes like ['1.1.1.1', '1.1.1.2', '1.1.1.3'] and returns the chosen one
 def load_balance(tied_routes):
