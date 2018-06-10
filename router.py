@@ -53,6 +53,7 @@ def main(argv):
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
 	else:
+		global ROUTER_ADDR 
 		ROUTER_ADDR = ADDR
 		if STARTUP:
 			read_file(STARTUP, ADDR)
@@ -126,7 +127,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 				break
 		if not messagem_sent:
 			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + "to " + destination)
-			send_message(ADDR, ADDR, PORT, json_msg)
+			send_trace_or_data('error', ROUTER_ADDR, ADDR, json_msg)
 
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
