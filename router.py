@@ -57,10 +57,6 @@ def main(argv):
 		if STARTUP:
 			read_file(STARTUP, ADDR)
 
-
-		orig = (ADDR, int(PORT))
-		udp.bind(orig)
-
 		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 		t1.setDaemon(True)
 		t1.start()
@@ -70,45 +66,49 @@ def main(argv):
 		t2.start()
 
 		update_routes_periodically(PERIOD, ADDR, routing_table)
-		# remove_old_routes(PERIOD, ADDR, routing_table)
+		remove_old_routes(PERIOD, ADDR, routing_table)
 
 def listen_to_cdm(ADDR):
 	comando = None
-	try:
-		while True:
-			comando = input('')
-			comando = comando.replace('\n', '')
-			comando = comando.split(" ")
-			if comando[0] == 'add' and len(comando) == 3:
-				add_ve(comando[1], comando[2], routing_table, ADDR)
-				print ('Enlace adicionado')
-				print (routing_table)
-			elif comando[0] == 'del' and len(comando) == 2:
-				del_ve(comando[1], routing_table)
-				print ('Enlace removido')
-				print (routing_table)
-				t1 = threading.Thread(target=update, args=(ADDR, routing_table))
-				t1.setDaemon(True)
-				t1.start()
-			elif comando[0] == 'trace' and len(comando) == 2:
-				print (get_next_hop(comando[1]))
-				routers = list ()
-				routers.append(ADDR)
-				send_trace_or_data("trace", ADDR, comando[1], routers)
-				print ('Trace enviado')
-			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
-				print_table (routing_table)
-			elif comando[0] == 'quit':
-				os._exit(1)
-	except Exception as e:
-		os._exit(1)
+	#try:
+	while True:
+		comando = input('')
+		comando = comando.replace('\n', '')
+		comando = comando.split(" ")
+		if comando[0] == 'add' and len(comando) == 3:
+			add_ve(comando[1], comando[2], routing_table, ADDR)
+			print ('Enlace adicionado')
+			print (routing_table)
+		elif comando[0] == 'del' and len(comando) == 2:
+			del_ve(comando[1], routing_table)
+			print ('Enlace removido')
+			print (routing_table)
+			t1 = threading.Thread(target=update, args=(ADDR, routing_table))
+			t1.setDaemon(True)
+			t1.start()
+		elif comando[0] == 'trace' and len(comando) == 2:
+			print("recebeu trace", comando[1])
+			print (get_next_hop(comando[1]))
+			print("pegou next")
+			routers = list()
+			routers.append(ADDR)
+			send_trace_or_data("trace", ADDR, comando[1], routers)
+			print ('Trace enviado')
+		elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
+			print_table (routing_table)
+		elif comando[0] == 'quit':
+			os._exit(1)
+	#except Exception as e:
+	#	print(e)
+	#	os._exit(1)
 
 def send_trace_or_data(type, ADDR, destination, routers):
+	print("send trace or data", type, ADDR, destination, routers)
 	json_msg = encode_message(type, ADDR, destination, routers)
 	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
-		# print ("Enviando mensagem")
+		print ("Enviando mensagem")
 		send_message(ADDR, ip, PORT, json_msg)
 	else:
 		messagem_sent = False
@@ -121,8 +121,10 @@ def send_trace_or_data(type, ADDR, destination, routers):
 				messagem_sent = True
 				break
 		if not messagem_sent:
-			json_msg = encode_message('error', ADDR, ROUTER_ADDR, "There is no route available from " + ROUTER_ADDR + "to " + destination)
-
+			print("send trace or data msg not sent", type, ADDR, destination, ROUTER_ADDR)
+			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + "to " + destination)
+			send_message(ADDR, ADDR, PORT, json_msg)
+			
 def add_ve(ip, weight, routing_table, addedBy):
 	route_row = RouteRow (ip, ip, int(weight), time.time(), addedBy)
 	routing_table.append(route_row)
@@ -137,10 +139,10 @@ def del_ve(ip, routing_table):
 
 def get_next_hop(destination):
 	tied_routes = get_tied_routes(routing_table, destination)
-	if tied_routes is None:
-		for i in range (0,len(routing_table)):
-			if routing_table[i].destination == destination:
-				return routing_table[i].nextHop
+	if tied_routes is None or tied_routes == []:
+		for route in routing_table:
+			if route.destination == destination:
+				return route.nextHop
 		return None
 	else:
 		route = load_balance(tied_routes)
@@ -189,7 +191,7 @@ def is_neighbor(routing_table, router):
 
 # Identifica e retorna as rotas de mesmo peso para um mesmo destino
 def get_tied_routes(routing_table, destination):
-	destination_routes = list(route for  route in routing_table if (route.destination == destination))
+	destination_routes = list(route for route in routing_table if (route.destination == destination))
 	tied_routes = list(route for route in destination_routes if(route.cost == aux_route.cost and route.nextHop != aux_route.nextHop for aux_route in destination_routes))
 
 	if tied_routes is not None:
@@ -319,6 +321,9 @@ def send_message(ADDR, HOST, PORT, message):
 	udp.sendto(message.encode('utf-8'), dest)
 
 def start_listening(IP, PORT):
+	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+	orig = (IP, int(PORT))
+	udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
 		# verifica se roteador que envia a mensagem ainda é vizinho
@@ -372,7 +377,7 @@ def remove_old_routes(PERIOD, ADDR, routing_table):
 	threading.Timer(int(PERIOD), remove_old_routes, args = (PERIOD, ADDR, routing_table)).start()
 	is_there_change = False
 	for route in routing_table:
-		if time.time() > (route.ttl + 4*float(PERIOD)):
+		if time.time() > (route.ttl + 4*float(PERIOD)) and route.sentBy != ADDR:
 			routing_table.remove(route)
 			is_there_change = True
 	if is_there_change:
