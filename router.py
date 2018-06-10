@@ -15,8 +15,8 @@ from sys import exit
 routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl sentBy')
 count_route_rows = 0
-# PORT = 55151
-PORT = 55152 # porta utilizada pelo emulador do monitor
+PORT = 55151
+# PORT = 55152 # porta utilizada pelo emulador do monitor
 PERIOD = None
 ROUTER_ADDR = None
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
@@ -53,7 +53,7 @@ def main(argv):
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
 	else:
-		global ROUTER_ADDR 
+		global ROUTER_ADDR
 		ROUTER_ADDR = ADDR
 		if STARTUP:
 			read_file(STARTUP, ADDR)
@@ -91,7 +91,7 @@ def listen_to_cdm(ADDR):
 			t1.start()
 		elif comando[0] == 'trace' and len(comando) == 2:
 			# print("recebeu trace", comando[1])
-			print (get_next_hop(comando[1]))
+			# print (get_next_hop(comando[1]))
 			# print("pegou next")
 			routers = list()
 			routers.append(ADDR)
@@ -178,8 +178,9 @@ def get_splithorizon_routing_table(routing_table, router):
 	return new_routing_table
 
 # Retorna tabela de roteamento como um dicionario
-def get_routingtable_to_dict(routing_table):
+def get_routingtable_to_dict(ADDR, routing_table):
 	routing_dict = dict()
+	routing_dict[ADDR] = 0
 	for route in routing_table:
 		routing_dict[route.destination] = route.cost
 
@@ -328,9 +329,9 @@ def send_message(ADDR, HOST, PORT, message):
 	# PARA DEBUG
 	teste = decode_message(ADDR,message)
 	# if (teste["type"] == "trace"):
-	# 	print ("DEST:",dest)
-	# 	print ("VOU ENVIAR A MENSAGEM")
-	#print ("MESSAGE:",message)
+	# # 	print ("DEST:",dest)
+	# # 	print ("VOU ENVIAR A MENSAGEM")
+	# 	print (message)
 
 	udp.sendto(message.encode('utf-8'), dest)
 	# if (teste["type"] == "trace"):
@@ -346,14 +347,16 @@ def start_listening(IP, PORT):
 
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
+		# if json_msg["type"] == 'trace':
+			# print ("TRACE de %s recebido" % (str(client[0])) )
 		if is_neighbor(routing_table, str(client[0]).replace("'","")) is True:
 			if json_msg["type"] == 'update':
 				# PARA DEBUG:
-				print ("Update do vizinho %s recebido" % (json_msg["source"]) )
+				# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
 				# print (json_msg)
 				new_routing_table = json_msg["distances"]
 				# PARA DEBUG:
-				print ("TABELA RECEBIDA:", new_routing_table)
+				# print ("TABELA RECEBIDA:", new_routing_table)
 				# print ("ROTA ANTES DO UPDATE")
 				# print_table (routing_table)
 				for new_route in new_routing_table:
@@ -377,10 +380,10 @@ def start_listening(IP, PORT):
 				# print_table (routing_table)
 				# print ("------------------------------------------------------------")
 			elif json_msg["type"] == 'trace':
-				print("RECEBENDO MENSAGEM DE TRACE", json_msg, client)
+				# print("RECEBENDO MENSAGEM DE TRACE", json_msg, client)
 				routers = json_msg["hops"]
 				routers.append(IP)
-				print ("Caminho trace ate agora:", routers)
+				# print ("Caminho trace ate agora:", routers)
 				if json_msg["destination"] == IP: # trace chegou ao destino!
 					payload = json.dumps(json_msg)
 					send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
@@ -418,7 +421,7 @@ def update(ADDR, routing_table):
 		new_routing_table = get_splithorizon_routing_table(routing_table, router)
 		# print_table(new_routing_table)
 		# print ("dict:", get_routingtable_to_dict(new_routing_table))
-		json_msg = encode_message("update", ADDR, router, get_routingtable_to_dict(new_routing_table))
+		json_msg = encode_message("update", ADDR, router, get_routingtable_to_dict(ADDR, new_routing_table))
 		router = router.replace("'","")
 		send_message(ADDR, router, PORT, json_msg)
 
