@@ -53,7 +53,8 @@ def main(argv):
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
 	else:
-		global ROUTER_ADDR = ADDR
+		global ROUTER_ADDR 
+		ROUTER_ADDR = ADDR
 		if STARTUP:
 			read_file(STARTUP, ADDR)
 
