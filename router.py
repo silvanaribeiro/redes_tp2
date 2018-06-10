@@ -89,15 +89,18 @@ def listen_to_cdm(ADDR):
 			t1.setDaemon(True)
 			t1.start()
 		elif comando[0] == 'trace' and len(comando) == 2:
-			print("recebeu trace", comando[1])
+			# print("recebeu trace", comando[1])
 			print (get_next_hop(comando[1]))
-			print("pegou next")
+			# print("pegou next")
 			routers = list()
 			routers.append(ADDR)
 			send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
 			print ('Trace enviado')
 		elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
 			print_table (routing_table)
+		elif comando[0] == 'cls':
+			# print ("entrou")
+			os.system('clear')
 		elif comando[0] == 'quit':
 			os._exit(1)
 	# except Exception as e:
@@ -108,7 +111,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
-		print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
+		# print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
 		send_message(ADDR, ip, PORT, json_msg)
 		# print ("Enviado")
 	else:
@@ -213,7 +216,7 @@ def print_table(routing_table):
 def has_route(routing_table, new_route, neighbor, cost_hop):
 	for route in routing_table:
 		if ((route.destination == new_route.destination) and (route.nextHop == neighbor)
-			and (route.cost == (new_route.cost + cost_hop)) and (route.sentBy == neighbor)):
+			and (route.cost == (new_route.cost + cost_hop))): # and (route.sentBy == neighbor)):
 			routing_table.remove(route)
 			new_route = (RouteRow(route.destination, route.nextHop , route.cost,
 					 time.time(), route.sentBy))
@@ -342,17 +345,14 @@ def start_listening(IP, PORT):
 
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
-		# print ("is_neighbor:", is_neighbor(routing_table, json_msg["source"]))
-		# print ("Client:", str(client[0]).replace("'",""))
-		# print ("is_neighbor:", is_neighbor(routing_table, str(client[0]).replace("'","")))
 		if is_neighbor(routing_table, str(client[0]).replace("'","")) is True:
 			if json_msg["type"] == 'update':
 				# PARA DEBUG:
-				# print ("Update do vizinho %s recebido" % (json_msg["source"]) )
+				print ("Update do vizinho %s recebido" % (json_msg["source"]) )
 				# print (json_msg)
 				new_routing_table = json_msg["distances"]
 				# PARA DEBUG:
-				# print ("TABELA RECEBIDA:", new_routing_table)
+				print ("TABELA RECEBIDA:", new_routing_table)
 				# print ("ROTA ANTES DO UPDATE")
 				# print_table (routing_table)
 				for new_route in new_routing_table:
