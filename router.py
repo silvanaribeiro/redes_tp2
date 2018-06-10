@@ -87,20 +87,12 @@ def listen_to_cdm(ADDR):
 				t1.setDaemon(True)
 				t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
-				ip_trace = ''
-				if not comando[1].startswith("'"):
-					ip_trace = "'" + comando[1]
-				else:
-					ip_trace = comando[1]
-				if not comando[1].startswith("'"):
-					ip_trace += "'"
-					
-				print("recebeu trace", ip_trace)
-				print (get_next_hop(ip_trace))
+				print("recebeu trace", comando[1])
+				print (get_next_hop(comando[1]))
 				print("pegou next")
 				routers = list()
 				routers.append(ADDR)
-				send_trace_or_data("trace", ADDR, comando[1], routers)
+				send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
 				print ('Trace enviado')
 			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
 				print_table (routing_table)
@@ -114,7 +106,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	count_chances = 0
 	ip = get_next_hop(destination)
 	if ip is not None:
-		print ("Enviando mensagem")
+		print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
 		send_message(ADDR, ip, PORT, json_msg)
 	else:
 		messagem_sent = False
@@ -320,7 +312,7 @@ def decode_message(IP, message):
 
 
 def send_message(ADDR, HOST, PORT, message):
-	#print("send message", ADDR, HOST, PORT, message)
+	print("send message", ADDR, HOST, PORT, message)
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dest = (str(HOST), int(PORT))
 
