@@ -15,8 +15,8 @@ from sys import exit
 routing_table = list()
 RouteRow = namedtuple('RouteRow', 'destination nextHop cost ttl sentBy')
 count_route_rows = 0
-# PORT = 55151
-PORT = 55152 # porta utilizada pelo emulador do monitor
+PORT = 55151
+# PORT = 55152 # porta utilizada pelo emulador do monitor
 PERIOD = None
 ROUTER_ADDR = None
 
@@ -52,7 +52,7 @@ def main(argv):
 		print("Or:")
 		print("router.py --addr <ADDR> --update-period <PERIOD> --startup-commands [STARTUP]")
 	else:
-		global ROUTER_ADDR 
+		global ROUTER_ADDR
 		ROUTER_ADDR = ADDR
 		if STARTUP:
 			read_file(STARTUP, ADDR)
@@ -91,15 +91,15 @@ def listen_to_cdm(ADDR):
 					print("Invalid IP address.")
 				else:
 					add_ve(comando[1], comando[2], routing_table, ADDR)
-					print ('Enlace adicionado')
-					print (routing_table)
+					#print ('Enlace adicionado')
+					#print (routing_table)
 			elif comando[0] == 'del' and len(comando) == 2:
 				if is_ip_valid(comando[1]):
 					print("Invalid IP address.")
 				else:
 					del_ve(comando[1], routing_table)
-					print ('Enlace removido')
-					print (routing_table)
+					#print ('Enlace removido')
+					#print (routing_table)
 					t1 = threading.Thread(target=update, args=(ADDR, routing_table))
 					t1.setDaemon(True)
 					t1.start()
@@ -112,7 +112,7 @@ def listen_to_cdm(ADDR):
 					routers = list()
 					routers.append(ADDR)
 					send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
-					print ('Trace enviado')
+					#print ('Trace enviado')
 			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
 				print_table (routing_table)
 			elif comando[0] == 'quit':
@@ -123,12 +123,16 @@ def listen_to_cdm(ADDR):
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
 	count_chances = 0
-	ip = get_next_hop(destination)
+	if ADDR != destination:
+		ip = get_next_hop(destination)
+	else:
+		ip = ADDR
 	if ip is not None:
-		print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
+		# print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
 		send_message(ADDR, ip, PORT, json_msg)
 		print ("Enviado")
 	else:
+		print ("Trying to find route to reach %s..." % (destination))
 		messagem_sent = False
 		while count_chances <= 2:
 			time.sleep(5)
@@ -139,7 +143,8 @@ def send_trace_or_data(type, ADDR, destination, routers):
 				messagem_sent = True
 				break
 		if not messagem_sent:
-			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + "to " + destination)
+			print ("There is no route available from " + ADDR + " to " + destination)
+			json_msg = encode_message('error', ADDR, destination, "There is no route available from " + ADDR + " to " + destination)
 			send_trace_or_data('error', ROUTER_ADDR, ADDR, json_msg)
 
 def add_ve(ip, weight, routing_table, addedBy):
@@ -151,7 +156,7 @@ def del_ve(ip, routing_table):
 	for route in routing_table:
 		if ip == route.nextHop:
 			routing_table.remove(route)
-	print_table(routing_table)
+	# print_table(routing_table)
 	return routing_table
 
 def get_next_hop(destination):
@@ -191,8 +196,9 @@ def get_splithorizon_routing_table(routing_table, router):
 	return new_routing_table
 
 # Retorna tabela de roteamento como um dicionario
-def get_routingtable_to_dict(routing_table):
+def get_routingtable_to_dict(ADDR, routing_table):
 	routing_dict = dict()
+	routing_dict[ADDR] = 0
 	for route in routing_table:
 		routing_dict[route.destination] = route.cost
 
@@ -230,7 +236,7 @@ def print_table(routing_table):
 def has_route(routing_table, new_route, neighbor, cost_hop):
 	for route in routing_table:
 		if ((route.destination == new_route.destination) and (route.nextHop == neighbor)
-			and (route.cost == (new_route.cost + cost_hop)) and (route.sentBy == neighbor)):
+			and (route.cost == (new_route.cost + cost_hop))): # and (route.sentBy == neighbor)):
 			routing_table.remove(route)
 			new_route = (RouteRow(route.destination, route.nextHop , route.cost,
 					 time.time(), route.sentBy))
@@ -319,7 +325,7 @@ def encode_message(type, source, destination, last_info):
 	elif type is 'trace':
 		return json.dumps({'type': type, 'source': source, 'destination': destination, 'hops': last_info})
 	else: # error
-		return json.dumps({'type': type, 'source': source, 'destination': destination, 'message': last_info})
+		return json.dumps({'type': type, 'source': source, 'destination': destination, 'payload': last_info})
 
 
 def decode_message(IP, message):
@@ -343,6 +349,7 @@ def send_message(ADDR, HOST, PORT, message):
 	# PARA DEBUG
 	# print ("DEST:",dest)
 	# print ("MESSAGE:",message)
+
 	udp.sendto(message.encode('utf-8'), dest)
 	udp.close()
 
@@ -355,9 +362,8 @@ def start_listening(IP, PORT):
 
 		# verifica se roteador que envia a mensagem ainda é vizinho
 		json_msg = decode_message(IP, message)
-		# print ("is_neighbor:", is_neighbor(routing_table, json_msg["source"]))
-		# print ("Client:", str(client[0]).replace("'",""))
-		# print ("is_neighbor:", is_neighbor(routing_table, str(client[0]).replace("'","")))
+		# if json_msg["type"] == 'trace':
+			# print ("TRACE de %s recebido" % (str(client[0])) )
 		if is_neighbor(routing_table, str(client[0]).replace("'","")) is True:
 			if json_msg["type"] == 'update':
 				# PARA DEBUG:
@@ -389,20 +395,20 @@ def start_listening(IP, PORT):
 				# print_table (routing_table)
 				# print ("------------------------------------------------------------")
 			elif json_msg["type"] == 'trace':
-				print("RECEBENDO MENSAGEM DE TRACE", json_msg, client)
+				# print("RECEBENDO MENSAGEM DE TRACE", json_msg, client)
 				routers = json_msg["hops"]
 				routers.append(IP)
-				print ("Caminho trace ate agora:", routers)
+				# print ("Caminho trace ate agora:", routers)
 				if json_msg["destination"] == IP: # trace chegou ao destino!
 					payload = json.dumps(json_msg)
 					send_trace_or_data("data", json_msg["destination"] , json_msg["source"], payload)
 				else: # trace segue seu caminho
-					print ("Seguindo o caminho")
+					# print ("Seguindo o caminho")
 					# print ("destino:", json_msg["destination"])
 					send_trace_or_data("trace", json_msg["source"], json_msg["destination"], routers)
 			elif json_msg["type"] == 'data':
 				if json_msg["destination"] != IP: # data segue seu caminho
-					print ("Data passou por aqui!")
+					# print ("Data passou por aqui!")
 					send_trace_or_data("data", json_msg["source"] , json_msg["destination"], json_msg["payload"])
 	udp.close()
 
@@ -430,7 +436,7 @@ def update(ADDR, routing_table):
 		new_routing_table = get_splithorizon_routing_table(routing_table, router)
 		# print_table(new_routing_table)
 		# print ("dict:", get_routingtable_to_dict(new_routing_table))
-		json_msg = encode_message("update", ADDR, router, get_routingtable_to_dict(new_routing_table))
+		json_msg = encode_message("update", ADDR, router, get_routingtable_to_dict(ADDR, new_routing_table))
 		router = router.replace("'","")
 		send_message(ADDR, router, PORT, json_msg)
 
