@@ -19,6 +19,7 @@ PORT = 55151
 # PORT = 55152 # porta utilizada pelo emulador do monitor
 PERIOD = None
 ROUTER_ADDR = None
+udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
 
 def main(argv):
 	opts = None
@@ -46,7 +47,7 @@ def main(argv):
 		if len(args) == 3:
 			STARTUP = args[2]
 
-	if ADDR is None or PERIOD is None or not is_ip_valid(ADDR):
+	if ADDR is None or PERIOD is None:
 		print("Error on startup. Use either: ")
 		print("router.py <ADDR> <PERIOD> [STARTUP]")
 		print("Or:")
@@ -57,6 +58,8 @@ def main(argv):
 		if STARTUP:
 			read_file(STARTUP, ADDR)
 
+		orig = (ADDR, int(PORT))
+		udp.bind(orig)
 		t1 = threading.Thread(target=start_listening, args=(ADDR, PORT))
 		t1.setDaemon(True)
 		t1.start()
@@ -68,57 +71,41 @@ def main(argv):
 		update_routes_periodically(PERIOD, ADDR, routing_table)
 		remove_old_routes(PERIOD, ADDR, routing_table)
 
-def is_ip_valid(ip):
-	test = ip.split(".")
-	if len(test) != 4:
-		return False
-	for t in test:
-		try:
-			valid_int = int(t)
-		except Exception as e:
-			return False
-	return True
-
 def listen_to_cdm(ADDR):
 	comando = None
-	try:
-		while True:
-			comando = input('')
-			comando = comando.replace('\n', '')
-			comando = comando.split(" ")
-			if comando[0] == 'add' and len(comando) == 3:
-				if is_ip_valid(comando[1]):
-					print("Invalid IP address.")
-				else:
-					add_ve(comando[1], comando[2], routing_table, ADDR)
-					#print ('Enlace adicionado')
-					#print (routing_table)
-			elif comando[0] == 'del' and len(comando) == 2:
-				if is_ip_valid(comando[1]):
-					print("Invalid IP address.")
-				else:
-					del_ve(comando[1], routing_table)
-					#print ('Enlace removido')
-					#print (routing_table)
-					t1 = threading.Thread(target=update, args=(ADDR, routing_table))
-					t1.setDaemon(True)
-					t1.start()
-			elif comando[0] == 'trace' and len(comando) == 2:
-				if is_ip_valid(comando[1]):
-					print("Invalid IP address.")
-				else:
-					print (get_next_hop(comando[1]))
-					print("pegou next")
-					routers = list()
-					routers.append(ADDR)
-					send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
-					#print ('Trace enviado')
-			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
-				print_table (routing_table)
-			elif comando[0] == 'quit':
-				os._exit(1)
-	except Exception as e:
-		os._exit(1)
+	# try:
+	while True:
+		comando = input('')
+		comando = comando.replace('\n', '')
+		comando = comando.split(" ")
+		if comando[0] == 'add' and len(comando) == 3:
+			add_ve(comando[1], comando[2], routing_table, ADDR)
+			# print ('Enlace adicionado')
+			# print (routing_table)
+		elif comando[0] == 'del' and len(comando) == 2:
+			del_ve(comando[1], routing_table)
+			# print ('Enlace removido')
+			# print (routing_table)
+			t1 = threading.Thread(target=update, args=(ADDR, routing_table))
+			t1.setDaemon(True)
+			t1.start()
+		elif comando[0] == 'trace' and len(comando) == 2:
+			# print("recebeu trace", comando[1])
+			# print (get_next_hop(comando[1]))
+			# print("pegou next")
+			routers = list()
+			routers.append(ADDR)
+			send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
+			# print ('Trace enviado')
+		elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
+			print_table (routing_table)
+		elif comando[0] == 'cls':
+			# print ("entrou")
+			os.system('clear')
+		elif comando[0] == 'quit':
+			os._exit(1)
+	# except Exception as e:
+	# 	os._exit(1)
 
 def send_trace_or_data(type, ADDR, destination, routers):
 	json_msg = encode_message(type, ADDR, destination, routers)
@@ -130,7 +117,7 @@ def send_trace_or_data(type, ADDR, destination, routers):
 	if ip is not None:
 		# print ("Enviando mensagem", ADDR, ip, PORT, json_msg)
 		send_message(ADDR, ip, PORT, json_msg)
-		print ("Enviado")
+		# print ("Enviado")
 	else:
 		print ("Trying to find route to reach %s..." % (destination))
 		messagem_sent = False
@@ -302,20 +289,17 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 
 
 def read_file(file_name, ADDR):
-	with open(file_name, "r") as f:
-		lines = f.readlines()
-		for line in lines:
-			command = line.replace('\n', '')
-			commands = command.split(" ")
-			if commands[0] != 'add':
-				print("Invalid command was read in startup file:", commands[0])
-			if len(commands) != 3:
-				print("Invalid format was read in startup file:", commands)
-			else:
-				if is_ip_valid(commands[1]):
-					print("Invalid IP address.")
-				else:
-					add_ve(commands[1], commands[2], routing_table, ADDR)
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            command = line.replace('\n', '')
+            commands = command.split(" ")
+            if commands[0] != 'add':
+                print("Invalid command was read in startup file:", commands[0])
+            if len(commands) != 3:
+                print("Invalid format was read in startup file:", commands)
+            else:
+                add_ve(commands[1], commands[2], routing_table, ADDR)
 
 def encode_message(type, source, destination, last_info):
 	if type is 'data':
@@ -343,20 +327,26 @@ def decode_message(IP, message):
 
 
 def send_message(ADDR, HOST, PORT, message):
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	dest = (HOST, int(PORT))
+	# print("send message", ADDR, HOST, PORT, message)
+	# udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	dest = (str(HOST), int(PORT))
 
 	# PARA DEBUG
-	# print ("DEST:",dest)
-	# print ("MESSAGE:",message)
+	# teste = decode_message(ADDR,message)
+	# if (teste["type"] == "trace"):
+	# # 	print ("DEST:",dest)
+	# # 	print ("VOU ENVIAR A MENSAGEM")
+	# 	print (message)
 
 	udp.sendto(message.encode('utf-8'), dest)
-	udp.close()
+	# if (teste["type"] == "trace"):
+	# 	print ("ENVIEI A MENSAGEM")
+	# udp.close()
 
 def start_listening(IP, PORT):
-	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	orig = (IP, int(PORT))
-	udp.bind(orig)
+	# udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+	# orig = (IP, int(PORT))
+	# udp.bind(orig)
 	while True:
 		message, client = udp.recvfrom(1024)
 
