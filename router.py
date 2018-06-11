@@ -46,7 +46,7 @@ def main(argv):
 		if len(args) == 3:
 			STARTUP = args[2]
 
-	if ADDR is None or PERIOD is None or is_ip_valid(ADDR):
+	if ADDR is None or PERIOD is None or not is_ip_valid(ADDR):
 		print("Error on startup. Use either: ")
 		print("router.py <ADDR> <PERIOD> [STARTUP]")
 		print("Or:")
@@ -69,15 +69,15 @@ def main(argv):
 		remove_old_routes(PERIOD, ADDR, routing_table)
 
 def is_ip_valid(ip):
-    test = ip.split(".")
-    if len(test) != 4:
-        return False
-    for t in test:
-        try:
-            valid_int = int(t)
-        except:
-            return False
-    return True
+	test = ip.split(".")
+	if len(test) != 4:
+		return False
+	for t in test:
+		try:
+			valid_int = int(t)
+		except Exception as e:
+			return False
+	return True
 
 def listen_to_cdm(ADDR):
 	comando = None
@@ -87,24 +87,32 @@ def listen_to_cdm(ADDR):
 			comando = comando.replace('\n', '')
 			comando = comando.split(" ")
 			if comando[0] == 'add' and len(comando) == 3:
-				add_ve(comando[1], comando[2], routing_table, ADDR)
-				print ('Enlace adicionado')
-				print (routing_table)
+				if is_ip_valid(comando[1]):
+					print("Invalid IP address.")
+				else:
+					add_ve(comando[1], comando[2], routing_table, ADDR)
+					print ('Enlace adicionado')
+					print (routing_table)
 			elif comando[0] == 'del' and len(comando) == 2:
-				del_ve(comando[1], routing_table)
-				print ('Enlace removido')
-				print (routing_table)
-				t1 = threading.Thread(target=update, args=(ADDR, routing_table))
-				t1.setDaemon(True)
-				t1.start()
+				if is_ip_valid(comando[1]):
+					print("Invalid IP address.")
+				else:
+					del_ve(comando[1], routing_table)
+					print ('Enlace removido')
+					print (routing_table)
+					t1 = threading.Thread(target=update, args=(ADDR, routing_table))
+					t1.setDaemon(True)
+					t1.start()
 			elif comando[0] == 'trace' and len(comando) == 2:
-				print("recebeu trace", comando[1])
-				print (get_next_hop(comando[1]))
-				print("pegou next")
-				routers = list()
-				routers.append(ADDR)
-				send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
-				print ('Trace enviado')
+				if is_ip_valid(comando[1]):
+					print("Invalid IP address.")
+				else:
+					print (get_next_hop(comando[1]))
+					print("pegou next")
+					routers = list()
+					routers.append(ADDR)
+					send_trace_or_data("trace", ADDR, comando[1].replace("'", ""), routers)
+					print ('Trace enviado')
 			elif comando[0] == 'print': # COMANDO PARA DEBUG: PRINTA TABELA DE ROTEAMENTO
 				print_table (routing_table)
 			elif comando[0] == 'quit':
@@ -288,17 +296,20 @@ def merge_route(new_route, routing_table, cost_hop, ADDR, neighbor):
 
 
 def read_file(file_name, ADDR):
-    with open(file_name, "r") as f:
-        lines = f.readlines()
-        for line in lines:
-            command = line.replace('\n', '')
-            commands = command.split(" ")
-            if commands[0] != 'add':
-                print("Invalid command was read in startup file:", commands[0])
-            if len(commands) != 3:
-                print("Invalid format was read in startup file:", commands)
-            else:
-                add_ve(commands[1], commands[2], routing_table, ADDR)
+	with open(file_name, "r") as f:
+		lines = f.readlines()
+		for line in lines:
+			command = line.replace('\n', '')
+			commands = command.split(" ")
+			if commands[0] != 'add':
+				print("Invalid command was read in startup file:", commands[0])
+			if len(commands) != 3:
+				print("Invalid format was read in startup file:", commands)
+			else:
+				if is_ip_valid(commands[1]):
+					print("Invalid IP address.")
+				else:
+					add_ve(commands[1], commands[2], routing_table, ADDR)
 
 def encode_message(type, source, destination, last_info):
 	if type is 'data':
